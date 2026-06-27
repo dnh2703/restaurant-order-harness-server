@@ -27,6 +27,7 @@ export const streamRoutes = new Elysia().get(
         const keepAlive = new Promise<typeof KEEPALIVE>((resolve) => {
           timer = setTimeout(() => resolve(KEEPALIVE), KEEPALIVE_MS)
         })
+        // oxlint-disable-next-line no-await-in-loop -- sequential await required in SSE generator; Promise.all is impossible for an unbounded stream
         const result = await Promise.race([nextEvent, keepAlive])
         clearTimeout(timer)
         if (result === KEEPALIVE) {
