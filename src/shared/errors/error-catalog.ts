@@ -27,6 +27,13 @@ export const ERROR_CATALOG = {
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 
+  // Ordering (US-007)
+  MENU_ITEM_NOT_FOUND: { status: 404, message: 'Menu item does not exist for this restaurant' },
+  ITEM_UNAVAILABLE: { status: 409, message: 'Menu item is currently unavailable' },
+  INVALID_QUANTITY: { status: 422, message: 'Quantity must be at least 1' },
+  MISSING_REQUIRED_OPTION: { status: 422, message: 'A required option group requires a selection' },
+  INVALID_OPTION: { status: 422, message: 'Selected option is not valid for this menu item' },
+
   // Infrastructure
   DB_UNAVAILABLE: { status: 503, message: 'Database connectivity check failed' },
 } as const satisfies Record<string, ErrorDefinition>
