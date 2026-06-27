@@ -18,16 +18,16 @@ Populated from `SPEC.md` via intake #1. Full decomposition:
 | E03 Menu (read) | US-006 menu browse | sliced |
 | E04 Ordering | US-007 add + submit order | sliced |
 | E05 Realtime | US-008 customer order stream | sliced |
+| E06 Auth & RBAC | US-009 auth + guard, US-010 staff admin | sliced |
 
 Story files: `docs/stories/epics/`. Durable rows: `harness-cli query matrix`.
 
 ## Candidate Epics (not yet sliced)
 
-> E07–E10 depend on **E06 Auth & RBAC** (all staff screens are role-guarded).
+> E07–E10 depend on **E06 Auth & RBAC** (now sliced; all staff screens are role-guarded).
 
 | Epic | Candidate stories | SPEC | Risk | Status |
 | --- | --- | --- | --- | --- |
-| E06 Auth & RBAC | login, refresh, logout, staff/role admin | EPIC 8 | high-risk (auth) | unsliced |
 | E07 Kitchen | queue, status transition, sold-out toggle | EPIC 4 | normal | unsliced |
 | E08 Cashier & payment | open tables, bill detail, discount, checkout | EPIC 5 | high-risk (money) | unsliced |
 | E09 Admin menu/table CRUD | categories, dishes, options, tables, QR export | EPIC 6 + US-1.3 | normal | unsliced |

@@ -72,7 +72,7 @@ domains depend on auth and are sliced after the foundation is stable.
 | 3 | E03 Menu (customer read) | US-006 menu browse | sliced |
 | 4 | E04 Ordering | US-007 add + submit order | sliced |
 | 5 | E05 Realtime | US-008 customer order stream | sliced |
-| 6 | E06 Auth & RBAC | — | candidate (blocks all staff screens) |
+| 6 | E06 Auth & RBAC | US-009 auth + guard, US-010 staff admin | sliced (unblocks staff screens) |
 | 7 | E07 Kitchen | — | candidate |
 | 8 | E08 Cashier & payment | — | candidate |
 | 9 | E09 Admin menu/table CRUD | — | candidate |

@@ -43,7 +43,7 @@ Customer-loop epics (E01–E05) are sliced for the first buildout. Staff/admin e
 | E03 Menu (read) | browse/search/options for customer | EPIC 2 | sliced | normal |
 | E04 Ordering | cart, submit, status, service requests | EPIC 3 | sliced | normal |
 | E05 Realtime | SSE customer + restaurant streams | EPIC 9 | sliced | normal |
-| E06 Auth & RBAC | staff login/refresh/logout + guard | EPIC 8 | candidate | high-risk (auth) |
+| E06 Auth & RBAC | staff login/refresh/logout + guard | EPIC 8 | sliced | high-risk (auth) |
 | E07 Kitchen | queue + status + sold-out | EPIC 4 | candidate | normal |
 | E08 Cashier & payment | bill, discount, checkout | EPIC 5 | candidate | high-risk (money) |
 | E09 Admin menu/table CRUD | categories/dishes/options/tables | EPIC 6 | candidate | normal |
@@ -61,13 +61,14 @@ Customer-loop epics (E01–E05) are sliced for the first buildout. Staff/admin e
 | US-006 | Menu browse by category | normal | US-2.1 |
 | US-007 | Add items + submit order | normal | US-3.1, 3.2 |
 | US-008 | Realtime customer order stream | normal | US-9.2 |
+| US-009 | Staff auth & RBAC guard | high-risk | US-8.1–8.3, 8.4 guard |
+| US-010 | Staff account & role administration | high-risk | US-8.4 |
 
 Story files live under `docs/stories/epics/`. Durable rows registered via
 `harness-cli story add`; proof status starts at 0 (nothing implemented yet).
 
 ## Candidate Stories (not yet sliced)
 
-- E06: US-8.1 login, US-8.2 refresh, US-8.3 logout, US-8.4 staff/role admin.
 - E07: US-4.1 queue, US-4.2 status transition, US-4.3 sold-out toggle.
 - E08: US-5.1 open tables, US-5.2 bill detail, US-5.3 discount, US-5.4 checkout.
 - E09: US-6.1 categories, US-6.2 dishes, US-6.3 option groups, US-6.4 tables, US-1.3 QR export.
