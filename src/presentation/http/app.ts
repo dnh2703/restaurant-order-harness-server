@@ -4,6 +4,7 @@ import { errorHandler } from './plugins/error-handler'
 import { openapiPlugin } from './plugins/openapi'
 import { healthRoutes } from './routes/health'
 import { qrRoutes } from './routes/qr'
+import { streamRoutes } from './routes/stream'
 
 /**
  * HTTP application composition root. All routes are mounted under /api
@@ -15,5 +16,6 @@ export const app = new Elysia({ prefix: '/api' })
   .use(openapiPlugin)
   .use(healthRoutes)
   .use(qrRoutes)
+  .use(streamRoutes)
 
 export type App = typeof app
