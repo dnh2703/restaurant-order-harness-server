@@ -19,12 +19,24 @@ export const DB_TIMEOUT_MS = 30_000
 export const WARMUP_TIMEOUT_MS = 90_000
 
 /**
+ * Only a slow/cold connect is worth retrying: Neon scale-to-zero surfaces as a connection
+ * timeout (or a transient reset) while the compute wakes. Anything else — nothing
+ * listening (ECONNREFUSED, e.g. CI's dummy localhost URL), an unresolvable host
+ * (ENOTFOUND), or a migrated-but-missing table (42P01) — won't change by retrying, so we
+ * stop immediately instead of busy-looping the whole budget.
+ */
+function isWakingUp(error: unknown): boolean {
+  const e = error as { code?: string; message?: string }
+  if (e.code === 'ETIMEDOUT' || e.code === 'ECONNRESET') return true
+  return typeof e.message === 'string' && e.message.includes('connection timeout')
+}
+
+/**
  * Wake a scaled-to-zero Neon compute and confirm the schema is migrated. The shared app
- * pool has no connect timeout, so a single cold-start attempt can hang ~75s; instead retry
- * with a short-lived, fast-failing pool until one query lands. A "relation does not exist"
- * (42P01) is definitive — the DB is reachable but not migrated — so we stop and self-skip
- * rather than retry. Waking the compute here also keeps the shared `db` pool's later
- * connects fast.
+ * pool can hang on a cold-start connect, so probe with a short-lived, fast-failing pool
+ * and retry only while the compute is waking. Returns false (self-skip) the moment the DB
+ * is definitively unavailable or unmigrated. Waking the compute here also keeps the shared
+ * `db` pool's later connects fast.
  */
 export async function probeMigratedDb(): Promise<boolean> {
   const deadline = Date.now() + WARMUP_TIMEOUT_MS - 5_000
@@ -38,8 +50,8 @@ export async function probeMigratedDb(): Promise<boolean> {
       await probe.query('select 1 from orders limit 0')
       return true
     } catch (error) {
-      if ((error as { code?: string }).code === '42P01') return false // reachable, not migrated
-      // connection/cold-start error — retry until the budget runs out
+      if (!isWakingUp(error)) return false
+      await Bun.sleep(1_000) // brief backoff before the next wake attempt
     } finally {
       await probe.end().catch(() => {})
     }
