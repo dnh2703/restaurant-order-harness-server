@@ -13,5 +13,13 @@
     "no-console": "off",
     "unicorn/require-module-specifiers": "off"
   },
+  "overrides": [
+    {
+      "files": ["test/**"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist", "drizzle", "node_modules", "scripts", ".agents", ".claude", "docs"]
 }
