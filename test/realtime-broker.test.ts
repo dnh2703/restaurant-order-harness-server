@@ -1,6 +1,80 @@
+import { EventEmitter } from 'node:events'
+
 import { describe, expect, it } from 'bun:test'
 
 import { RealtimeBroker, topicForOrder } from '../src/infrastructure/realtime/realtime-broker'
+
+import { topicForOrder as topic } from '../src/infrastructure/realtime/realtime-broker'
+
+/** Minimal fake pg.Client that records LISTEN and lets the test emit error/end. */
+class FakeClient extends EventEmitter {
+  listened: string[] = []
+  connectCalls = 0
+  async connect(): Promise<void> {
+    this.connectCalls += 1
+  }
+  async query(sql: string): Promise<void> {
+    this.listened.push(sql)
+  }
+  async end(): Promise<void> {}
+}
+
+describe('RealtimeBroker lifecycle', () => {
+  it('connects and issues LISTEN on start', async () => {
+    const fake = new FakeClient()
+    const broker = new RealtimeBroker({
+      connectionString: 'unused',
+      clientFactory: () => fake as unknown as import('pg').Client,
+    })
+    await broker.start()
+    expect(fake.connectCalls).toBe(1)
+    expect(fake.listened).toContain('LISTEN realtime')
+    await broker.stop()
+  })
+
+  it('routes a pg notification to subscribers', async () => {
+    const fake = new FakeClient()
+    const broker = new RealtimeBroker({
+      connectionString: 'unused',
+      clientFactory: () => fake as unknown as import('pg').Client,
+    })
+    await broker.start()
+    const sub = broker.subscribe(topic('A'))
+    fake.emit('notification', {
+      channel: 'realtime',
+      payload: JSON.stringify({
+        type: 'order_item',
+        orderId: 'A',
+        orderItemId: 'i',
+        status: 'COOKING',
+        op: 'UPDATE',
+      }),
+    })
+    const result = await sub.events.next()
+    expect(result.value.status).toBe('COOKING')
+    sub.unsubscribe()
+    await broker.stop()
+  })
+
+  it('reconnects and re-LISTENs after the connection errors', async () => {
+    const clients: FakeClient[] = []
+    const broker = new RealtimeBroker({
+      connectionString: 'unused',
+      clientFactory: () => {
+        const c = new FakeClient()
+        clients.push(c)
+        return c as unknown as import('pg').Client
+      },
+      backoffMs: () => 5,
+    })
+    await broker.start()
+    clients[0]!.emit('error', new Error('connection lost'))
+    await Bun.sleep(40)
+    expect(clients.length).toBe(2)
+    expect(clients[1]!.listened).toContain('LISTEN realtime')
+    await broker.stop()
+  })
+})
 
 function payload(orderId: string, status = 'COOKING', op = 'UPDATE'): string {
   return JSON.stringify({

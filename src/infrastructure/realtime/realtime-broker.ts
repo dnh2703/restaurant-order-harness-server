@@ -19,7 +19,7 @@ export interface Subscription {
 }
 
 /** The one physical Postgres channel; orderId lives in the payload, routed in-memory. */
-const _CHANNEL = 'realtime'
+const CHANNEL = 'realtime'
 
 export function topicForOrder(orderId: string): string {
   return `order:${orderId}`
@@ -136,7 +136,52 @@ export class RealtimeBroker {
     for (const subscriber of subscribers) subscriber.push(event)
   }
 
-  // start()/stop() added in Task 4.
+  async start(): Promise<void> {
+    this.started = true
+    await this.connect()
+  }
+
+  private async connect(): Promise<void> {
+    if (!this.started) return
+    const client = this.clientFactory(this.connectionString)
+    client.on('notification', (msg) => this.publish(msg.payload))
+    client.on('error', () => this.scheduleReconnect())
+    client.on('end', () => this.scheduleReconnect())
+    try {
+      await client.connect()
+      await client.query(`LISTEN ${CHANNEL}`)
+      this.client = client
+      this.attempt = 0
+    } catch {
+      this.scheduleReconnect()
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.started || this.reconnectTimer) return
+    const delay = this.backoffMs(this.attempt)
+    this.attempt += 1
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      void this.connect()
+    }, delay)
+  }
+
+  async stop(): Promise<void> {
+    this.started = false
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    for (const set of this.topics.values()) {
+      for (const subscriber of set) subscriber.close()
+    }
+    this.topics.clear()
+    if (this.client) {
+      await this.client.end().catch(() => {})
+      this.client = null
+    }
+  }
 }
 
 export const broker = new RealtimeBroker({ connectionString: env.databaseUrlUnpooled })
