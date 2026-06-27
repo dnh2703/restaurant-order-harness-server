@@ -8,6 +8,13 @@
       "when": 1782543822730,
       "tag": "0000_heavy_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782584683499,
+      "tag": "0001_order_item_notify",
+      "breakpoints": true
     }
   ]
 }
