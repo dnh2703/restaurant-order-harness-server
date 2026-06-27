@@ -20,7 +20,7 @@ for wiring a validation ladder once the toolchain existed.
    the health route exercises its 503 branch, and the orders-invariant test self-skips.
    Real integration proof stays on Neon branches, out of CI.
 3. Serve API documentation with `@elysiajs/openapi` (successor to `@elysiajs/swagger`),
-   mounted on the `/api` app at `/api/openapi`.
+   mounted on the `/api` app at `/api/docs` (spec JSON at `/api/docs/json`).
 4. Defer deployment/CD until the app exposes real endpoints and a host is chosen. The
    app's realtime design (a backend-held Postgres `LISTEN` broker, decision 0008) needs a
    long-running host, which rules out pure-serverless platforms for the realtime path.

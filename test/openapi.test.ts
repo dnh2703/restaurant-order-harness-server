@@ -7,7 +7,7 @@ const { app } = await import('../src/presentation/http/app')
 
 describe('OpenAPI docs', () => {
   it('serves an OpenAPI document that includes the health route', async () => {
-    const res = await app.handle(new Request('http://localhost/api/openapi/json'))
+    const res = await app.handle(new Request('http://localhost/api/docs/json'))
     expect(res.status).toBe(200)
 
     const spec = (await res.json()) as {
