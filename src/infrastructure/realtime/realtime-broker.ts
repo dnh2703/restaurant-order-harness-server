@@ -137,6 +137,7 @@ export class RealtimeBroker {
   }
 
   async start(): Promise<void> {
+    if (this.started) return
     this.started = true
     await this.connect()
   }
@@ -144,12 +145,23 @@ export class RealtimeBroker {
   private async connect(): Promise<void> {
     if (!this.started) return
     const client = this.clientFactory(this.connectionString)
-    client.on('notification', (msg) => this.publish(msg.payload))
-    client.on('error', () => this.scheduleReconnect())
-    client.on('end', () => this.scheduleReconnect())
+    client.on('notification', (msg) => {
+      if (this.client === client) this.publish(msg.payload)
+    })
+    client.on('error', () => {
+      if (this.client === client) this.scheduleReconnect()
+    })
+    client.on('end', () => {
+      if (this.client === client) this.scheduleReconnect()
+    })
     try {
       await client.connect()
       await client.query(`LISTEN ${CHANNEL}`)
+      if (!this.started) {
+        // stop() ran while we were connecting — don't leak this client.
+        await client.end().catch(() => {})
+        return
+      }
       this.client = client
       this.attempt = 0
     } catch {
