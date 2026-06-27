@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia'
 
 import { errorHandler } from './plugins/error-handler'
+import { openapiPlugin } from './plugins/openapi'
 import { healthRoutes } from './routes/health'
 
 /**
@@ -8,6 +9,9 @@ import { healthRoutes } from './routes/health'
  * (see docs/product/api-conventions.md). Exported without `.listen()` so tests can
  * drive it via `app.handle(...)`; src/index.ts owns the actual listen.
  */
-export const app = new Elysia({ prefix: '/api' }).use(errorHandler).use(healthRoutes)
+export const app = new Elysia({ prefix: '/api' })
+  .use(errorHandler)
+  .use(openapiPlugin)
+  .use(healthRoutes)
 
 export type App = typeof app
