@@ -57,4 +57,13 @@ describe('RealtimeBroker fan-out', () => {
     const result = await sub.events.next()
     expect(result.done).toBe(true)
   })
+
+  it('unsubscribe is a hard stop: queued events are not drained', async () => {
+    const broker = new RealtimeBroker({ connectionString: 'unused' })
+    const sub = broker.subscribe(topicForOrder('A'))
+    broker.publish(payload('A', 'COOKING')) // queue an event
+    sub.unsubscribe() // hard stop
+    const result = await sub.events.next() // should return { done: true }
+    expect(result.done).toBe(true)
+  })
 })

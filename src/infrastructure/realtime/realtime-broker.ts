@@ -61,9 +61,9 @@ function createSubscriber(onClose: () => void): Subscriber {
 
   const iterator: AsyncIterableIterator<RealtimeEvent> = {
     next(): Promise<IteratorResult<RealtimeEvent>> {
+      if (closed) return Promise.resolve({ value: undefined as never, done: true })
       const queued = queue.shift()
       if (queued) return Promise.resolve({ value: queued, done: false })
-      if (closed) return Promise.resolve({ value: undefined as never, done: true })
       return new Promise((resolve) => {
         pending = resolve
       })
