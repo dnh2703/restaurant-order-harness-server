@@ -1,228 +1,106 @@
-# repository-harness
+# Restaurant QR Ordering — Server
 
-Turn any software repo into an agent-ready workspace.
+A web app for a single restaurant where a guest scans the QR code on their
+table, browses the menu, and orders dishes. The kitchen receives dishes and
+updates their status, the cashier finalizes the bill and payment, and the admin
+manages the menu, tables, and reports.
 
-`repository-harness` is a repository-level operating harness for Claude Code,
-Codex, Cursor, and other coding agents. It gives agents the missing project
-context they need before they change code: where to start, what the product
-contract says, how risky the work is, what proof is required, and which
-decisions future agents should inherit.
+This repository is built on a **harness** operating model: agents read the
+product contract, classify the work, and produce proof before changing code.
+The app is what users touch; the harness is what agents touch.
 
-The app is what users touch. The harness is what agents touch.
+## How This Repo Works
 
-## Why Star This Repo
+Before changing code, an agent answers practical questions from durable docs
+rather than chat history: what to read first, what kind of work this is, which
+product contract it affects, how risky it is, and what proof shows it is done.
 
-Star this repo if you want practical, reusable patterns for making AI-assisted
-software development more reliable, inspectable, and easier for humans to steer.
+Those answers live in:
 
-This project is exploring a simple idea:
-
-> Coding agents do not only need better prompts. They need better repositories.
-
-## The Problem
-
-Most repos are built for humans reading code in a familiar codebase. Coding
-agents usually enter with only a chat prompt and a shallow snapshot of files.
-That leads to common failure modes:
-
-- The agent edits code before understanding product intent.
-- Important constraints live only in chat history or in someone's head.
-- Validation expectations are vague or discovered too late.
-- Architecture tradeoffs are repeated instead of inherited.
-- Large requests do not get broken into reviewable story-sized work.
-
-## The Harness Approach
-
-A repository starts to have a harness when it helps an agent answer practical
-engineering questions without relying only on chat history:
-
-- What should I read first?
-- What type of work is this?
-- Which product contract does it affect?
-- How risky is the change?
-- What proof will show the work is done?
-- What decision or lesson should future agents inherit?
-
-In this repo, those answers live in:
-
-- `AGENTS.md` — the stable agent shim with local project notes and Harness
-  doc links.
+- `AGENTS.md` — agent shim with local project notes and harness doc links.
 - `docs/HARNESS.md` — the human-agent collaboration model.
-- `docs/FEATURE_INTAKE.md` — tiny, normal, and high-risk work classification.
+- `docs/FEATURE_INTAKE.md` — tiny / normal / high-risk work classification.
 - `docs/ARCHITECTURE.md` — architecture discovery and boundary rules.
 - `docs/TEST_MATRIX.md` — behavior-to-proof validation expectations.
-- `docs/stories/` — story packets and backlog items.
+- `docs/stories/` — story packets and backlog.
 - `docs/decisions/` — durable decisions and tradeoffs.
 - `docs/templates/` — reusable spec, story, decision, and validation templates.
 
-OpenAI describes this shift as an agent-first world where humans steer and
-agents execute:
-
-https://openai.com/index/harness-engineering/
-
-## Install Harness Into A Project
-
-From a target project directory, run:
+The durable layer (intake records, decisions, and the per-story test matrix) is
+managed with the Rust Harness CLI at `scripts/bin/harness-cli`:
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --yes
+scripts/bin/harness-cli query matrix          # per-story proof status
+scripts/bin/harness-cli query tools --status present
 ```
 
-On Windows PowerShell, run:
-
-```powershell
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Yes
-```
-
-If the target already has `AGENTS.md`, `docs/`, or `scripts/`, choose one:
-
-```bash
-# Update an existing Harness repo without moving existing files
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --yes
-
-# Back up and replace AGENTS.md, docs/, and scripts/
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --override --yes
-```
-
-```powershell
-# Update an existing Harness repo without moving existing files
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Merge -Yes
-
-# Back up and replace AGENTS.md, docs/, and scripts/
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Override -Yes
-```
-
-Use `--merge` when a project already has Harness and you want to append newly
-added Harness files without moving the existing `AGENTS.md`, `docs/`, or
-`scripts/` paths into backup. Existing files stay untouched; only missing
-Harness files are created.
-
-For older Harness installs whose `AGENTS.md` still contains the full generated
-operating guide, refresh it into the small stable shim:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --refresh-agent-shim --yes
-```
-
-The refresh backs up the existing file. If it detects the old
-Harness-generated guide, it replaces it with the shim. If the file appears
-custom, it appends or updates a marked Harness block instead of overwriting the
-project's local instructions.
-
-If the project is driven with Claude Code, add `--claude`. Claude Code never
-auto-loads `AGENTS.md`, so without this the installed harness is invisible to
-fresh sessions. The flag installs (or refreshes) a `CLAUDE.md` whose marked
-Harness block `@`-imports `AGENTS.md` and `docs/FEATURE_INTAKE.md` into every
-session's context. An existing `CLAUDE.md` gets the block appended after a
-backup; plain installs without the flag never touch `CLAUDE.md`:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --claude --yes
-```
-
-Or install into a specific path:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --directory /path/to/project --yes
-```
-
-```powershell
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Directory C:\path\to\project -Yes
-```
-
-Use `--dry-run` on Bash or `-DryRun` on PowerShell to preview changes before
-writing files.
-
-The installer also downloads the prebuilt Harness CLI for the current platform,
-verifies its `.sha256` checksum, and installs it at
-`scripts/bin/harness-cli` on macOS/Linux or `scripts/bin/harness-cli.exe` on
-Windows. The Rust CLI is the main Harness tool and stable command path.
-
-Harness CLI release assets are published from tags by the
-`Harness CLI Release` GitHub Actions workflow. The installer expects each
-release to include `harness-cli-<platform>` and
-`harness-cli-<platform>.sha256` assets for macOS arm64, macOS x64, Linux x64,
-Linux arm64, and Windows x64. The Windows asset is
-`harness-cli-windows-x64.exe` plus `harness-cli-windows-x64.exe.sha256`.
-
-Merged pull requests are recorded in `CHANGELOG.md` by the
-`Post-Merge Maintenance` workflow. When a merged PR changes the Rust CLI source,
-schema, Cargo metadata, or CLI release packaging, that workflow bumps the CLI
-patch version, updates `scripts/harness-cli-release-tag`, creates a
-`harness-cli-v*` tag, and runs the Harness CLI release build for that tag.
-
-## Try The Flow
-
-The fastest way to understand the harness is to inspect the tiny demo:
-
-- `docs/demo/README.md`: shows how a simple product idea becomes product docs,
-  stories, validation expectations, and decisions before implementation starts.
-
-A typical flow looks like this:
-
-```text
-human intent or product spec
-  -> product contract
-  -> feature intake
-  -> story packet
-  -> validation expectations
-  -> implementation work
-  -> decision or lesson captured for future agents
-```
-
-Implementation prompts do not go straight to code. They first pass through
-feature intake, become story-sized work when needed, and then carry both product
-validation and harness maintenance expectations.
-
-## Tool Registry
-
-The harness can use optional external tools (linters, code-graph servers,
-deploy checks) without depending on any of them. You register a tool as a
-provider of a *capability*, the harness scans whether it is actually present,
-and a workflow step uses whatever is equipped — an absent tool is a clean skip,
-never a failure.
-
-```bash
-# register a tool as a provider of a capability
-scripts/bin/harness-cli tool register --name deploy-check --kind cli \
-  --capability deploy-verification --command ./scripts/deploy-check.sh \
-  --responsibility Verification --description "Verify deploy health before release"
-
-# scan presence (writes present/missing/unknown)
-scripts/bin/harness-cli tool check
-
-# a step looks up what is equipped for a purpose
-scripts/bin/harness-cli query tools --capability deploy-verification --status present
-```
-
-Kinds (`cli`, `binary`, `mcp`, `skill`, `http`) make it agent-generic: each
-agent runtime uses what it can orchestrate. See `docs/TOOL_REGISTRY.md` for the
-full model, the degrade ladder, and how to wire a tool into a flow step.
+A typical flow: product spec → product contract → feature intake → story packet
+→ validation expectations → implementation → decision captured for future work.
 
 ## Current State
 
-This repository is in Harness v0.
+The spec (`SPEC.md`) has been decomposed into product docs, story packets, and
+an architecture decision. The first buildout — the customer ordering loop plus
+auth — is sliced as epics **E01–E06**. Implemented so far:
 
-There is no application implementation and no baked-in product specification
-yet. The current work is the reusable project harness: the file structure,
-agent operating model, feature intake process, story templates, and validation
-expectations that help humans and agents turn a future user-provided spec into
-implementation work.
+- **US-001 — Project scaffold + Neon connection + health.** Elysia (Bun) backend
+  in Clean Architecture layout, Drizzle + `node-postgres` connected to Neon, and
+  `GET /api/health`. Verified against a live Neon branch.
+- **Shared error catalog** (`src/shared/errors`) — one source of truth for error
+  codes, messages, and HTTP statuses, surfaced through the standard envelope.
+
+Remaining first-slice stories (US-002 data model, US-005–US-008 customer loop,
+US-009/US-010 auth & RBAC) are sliced and tracked in the test matrix with proof
+status starting at 0.
+
+## Running The App
+
+Requires Bun ≥ 1.3 and a Neon (or any Postgres) `DATABASE_URL`.
+
+```bash
+bun install
+cp .env.example .env          # then set DATABASE_URL (use sslmode=verify-full)
+bun run dev                   # watch mode; GET /api/health -> { data: { status: "ok" } }
+```
+
+Common scripts:
+
+```bash
+bun run typecheck   # tsc --noEmit
+bun run lint        # oxlint src test
+bun run format      # prettier --write
+bun test            # bun test
+bun run db:generate # drizzle-kit generate (migrations land from US-002)
+bun run db:migrate  # apply migrations
+```
+
+Git hooks (Husky) run on commit: `pre-commit` formats/lints staged files via
+lint-staged, and `commit-msg` enforces Conventional Commits via commitlint.
+
+### Stack
+
+- **Backend:** Elysia (Bun), Clean Architecture (`domain` / `application` /
+  `infrastructure` / `presentation`, plus a `shared` kernel).
+- **Database:** Neon serverless Postgres via Drizzle ORM on the `node-postgres`
+  driver (chosen so the realtime broker can hold a persistent `LISTEN/NOTIFY`
+  connection).
+- **Auth (planned):** in-house JWT access token + DB-stored revocable refresh
+  token.
+- **Realtime (planned):** SSE from Elysia sourced from Postgres `LISTEN/NOTIFY`.
+
+Rationale and risk gates: `docs/decisions/0008-restaurant-qr-architecture.md`.
 
 ## Product Sources
 
-No product contract is currently defined.
+The product contract is derived from `SPEC.md` and lives as smaller living
+artifacts:
 
-When a user provides a project specification, add or reference it as the input
-spec for the first buildout, then derive smaller living artifacts from it:
-
-- `docs/product/`: current product contract files, created from the spec.
-- `docs/stories/`: story packets and backlog created from selected work.
+- `SPEC.md`: the seed input spec for the first buildout.
+- `docs/product/`: product contract files (overview, data model, API
+  conventions, auth, and per-domain docs).
+- `docs/stories/`: story packets (`epics/`) and the backlog.
 - `docs/TEST_MATRIX.md`: behavior-to-proof control panel.
 - `docs/decisions/`: durable decisions and tradeoffs.
-
-Do not keep a project-specific spec or product breakdown in this harness until
-a real project supplies one.
 
 ## Repository Structure
 
@@ -230,43 +108,25 @@ a real project supplies one.
 project/
   AGENTS.md
   README.md
+  SPEC.md                  # seed product spec (Restaurant QR Ordering)
+  package.json             # Bun app: scripts, deps, tooling
+  drizzle.config.ts        # Drizzle Kit config (Neon Postgres)
+  src/                     # application code (Clean Architecture)
+    domain/                # entities, value objects, domain rules
+    application/           # use cases
+    infrastructure/        # config, Drizzle/pg client, db health
+    presentation/http/     # Elysia app, routes, plugins
+    shared/errors/         # error catalog + AppError + envelope
+  test/                    # bun tests
   docs/
     HARNESS.md
     FEATURE_INTAKE.md
     ARCHITECTURE.md
     TEST_MATRIX.md
-    HARNESS_BACKLOG.md
-    product/
-    stories/
-    decisions/
-    demo/
+    product/               # product contract derived from SPEC.md
+    stories/               # story packets and backlog
+    decisions/             # durable decisions and tradeoffs
     templates/
   scripts/
-    README.md
+    bin/harness-cli        # Rust Harness CLI (durable layer)
 ```
-
-## Contributing
-
-This project is early and benefits most from real-world agent failure cases,
-example harness installs, docs improvements, and reusable workflow patterns.
-See `CONTRIBUTING.md` for contribution ideas.
-
-Useful contributions include:
-
-- Show how the harness works in a real project.
-- Add missing templates or improve existing ones.
-- Propose validation patterns for different stacks.
-- Share failures where an agent made the wrong change because the repo lacked
-  context.
-- Compare harness behavior across Claude Code, Codex, Cursor, and other tools.
-
-## Share
-
-If this idea resonates, please star the repo and share it with someone building
-with coding agents.
-
-Short description:
-
-> An agent-ready repo harness for Claude Code, Codex, Cursor, and other coding
-> agents: AGENTS.md, product contracts, story packets, validation matrix, and
-> decision records.
