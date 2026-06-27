@@ -37,5 +37,23 @@ Then register: `scripts/bin/harness-cli story update --id US-002 --verify "<test
 
 ## Acceptance Evidence
 
-Add after verification: migration output, `\d` table listing or index assertions, and
-the failing-insert proof for the OPEN-order unique index.
+Verified 2026-06-27 on Neon branch `us-002-data-model` (`br-broad-poetry-atmtioet`,
+parent `production`, expires 2026-07-04).
+
+- **Migration**: `drizzle/0000_heavy_toro.sql` applied via `drizzle-kit migrate` —
+  `migrations applied successfully` (13 tables, 8 enums, all FKs + indexes).
+- **Invariant index** (`pg_indexes`):
+  `CREATE UNIQUE INDEX orders_one_open_per_table_idx ON public.orders USING btree
+  (table_id) WHERE (status = 'OPEN'::order_status)`.
+- **Failing-insert proof**: a second `OPEN` order for the same `table_id` is rejected
+  with SQLSTATE `23505` (unique_violation); a `PAID`-then-`OPEN` sequence is allowed.
+  Covered by `test/orders-invariant.test.ts` (note: Drizzle wraps driver errors — the
+  pg `code` is read from `error.cause`).
+- **Seed**: `bun run db:seed` loaded exact counts — restaurants 1, users 3, tables 3,
+  categories 2, menu_items 4, option_groups 4, options 8.
+- **Suite**: `bun test` 12 pass / 0 fail; `tsc`, `oxlint`, `prettier` clean.
+- **Registered verify** (`harness-cli story verify US-002`, DB-free gate):
+  `bun run typecheck && bun test test/schema.test.ts test/seed.test.ts` → pass.
+
+Not applied to the `production` branch yet — run `bun run db:migrate` against the
+production `DATABASE_URL` when ready to promote.

@@ -105,5 +105,6 @@ options) · `quantity int` · `note?` ·
 
 - All schema changes go through Drizzle migrations checked into the repo.
 - Test migrations on a Neon branch before applying to the primary branch
-  (see `docs/product/data-model.md` invariants and the Neon branching skill).
+  (see the invariants above, decision `0008-restaurant-qr-architecture`, and the Neon
+  branching skill).
 - Destructive migrations are high-risk and require a decision record.
