@@ -29,6 +29,7 @@ export const env = {
   isTest: nodeEnv === 'test',
   port: optionalNumber('PORT', 3000),
   databaseUrl: required('DATABASE_URL'),
+  databaseUrlUnpooled: required('DATABASE_URL_UNPOOLED'),
 } as const
 
 export type Env = typeof env
