@@ -10,3 +10,12 @@ dist/
 # Downloaded Harness CLI binary for installed project instances.
 scripts/bin/harness-cli
 scripts/bin/harness-cli.exe
+
+# App (Bun/Node) dependencies and build output.
+node_modules/
+
+# Environment / secrets — never commit connection strings.
+.env
+.env.*
+!.env.example
+

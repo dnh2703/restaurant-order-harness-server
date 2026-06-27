@@ -1,0 +1,17 @@
+# App formats its own code only. Everything below is harness-owned or generated.
+node_modules
+dist
+drizzle
+bun.lock
+harness.db
+
+# Harness / vendored content — not the app's to reformat.
+scripts
+.agents
+.claude
+docs
+skills-lock.json
+README.md
+SPEC.md
+AGENTS.md
+CLAUDE.md

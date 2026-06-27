@@ -57,4 +57,34 @@ Introduces the app stack. When the build exists, set a story `--verify` command
 
 ## Evidence
 
-Add after implementation: boot log + `curl /api/health` output.
+Implemented 2026-06-27. Stack: Elysia (Bun) + Drizzle ORM on `node-postgres` (`pg`),
+Clean Architecture layout (`src/{domain,application,infrastructure,presentation}`).
+
+Toolchain added: oxlint, Prettier, Husky (`pre-commit` → lint-staged, `commit-msg` →
+commitlint/conventional), TypeScript strict, `bun test`.
+
+Driver note: `node-postgres` chosen over the HTTP serverless driver because the realtime
+broker (decision 0008) needs a persistent `LISTEN/NOTIFY` connection. Drizzle pinned to
+the stable line (`drizzle-orm@0.45`, `drizzle-kit@0.31`); the v1 RC the skill recommends
+had config/relations typing friction at scaffold time — revisit when v1 ships.
+
+Verified locally (and against a live Neon branch):
+
+```text
+$ bun run typecheck   # tsc --noEmit → clean
+$ bun run lint        # oxlint src test → clean
+$ bun run format:check# prettier → clean
+$ bun test            # 1 pass (success branch, live DB)
+
+# live Neon (DATABASE_URL set):
+$ curl /api/health    → HTTP 200 {"data":{"status":"ok"}}
+# negative paths:
+$ curl /api/nope      → HTTP 404 {"error":{"code":"NOT_FOUND", ...}}
+# dummy/unreachable DB → HTTP 503 {"error":{"code":"DB_UNAVAILABLE", ...}}
+```
+
+Proof: `--integration 1 --platform 1` (health 200 ok against live Neon; Bun boot +
+Neon connect). `unit`/`e2e` n/a for scaffold.
+
+SSL note: use `sslmode=verify-full` in `DATABASE_URL`. `sslmode=require` works but emits
+a `pg` deprecation warning and will downgrade to weaker TLS in a future `pg` major.
