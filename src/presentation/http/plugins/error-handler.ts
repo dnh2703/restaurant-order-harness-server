@@ -1,42 +1,40 @@
 import { Elysia } from 'elysia'
 
 import { env } from '../../../infrastructure/config/env'
+import { AppError, ERROR_CATALOG, errorEnvelope } from '../../../shared/errors'
 
 /**
  * Maps thrown/validation errors to the project's error envelope:
  *   { "error": { "code", "message", "details"? } }
- * See docs/product/api-conventions.md. `code` is a stable SCREAMING_SNAKE string;
- * clients branch on `code`, not `message`.
+ * Codes, messages, and statuses come from the shared error catalog
+ * (src/shared/errors). See docs/product/api-conventions.md.
  */
 export const errorHandler = new Elysia({ name: 'error-handler' }).onError(
   { as: 'global' },
   ({ code, error, set }) => {
+    // Application/domain errors carry their own code + status.
+    if (error instanceof AppError) {
+      set.status = error.status
+      return errorEnvelope(error.code, { message: error.message, details: error.details })
+    }
+
+    // Framework-level errors raised by Elysia.
     switch (code) {
       case 'VALIDATION':
-        set.status = 400
-        return {
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            details: error.all,
-          },
-        }
+        set.status = ERROR_CATALOG.VALIDATION_ERROR.status
+        return errorEnvelope('VALIDATION_ERROR', { details: error.all })
       case 'NOT_FOUND':
-        set.status = 404
-        return { error: { code: 'NOT_FOUND', message: 'Resource not found' } }
+        set.status = ERROR_CATALOG.NOT_FOUND.status
+        return errorEnvelope('NOT_FOUND')
       case 'PARSE':
-        set.status = 400
-        return { error: { code: 'MALFORMED_REQUEST', message: 'Could not parse request body' } }
+        set.status = ERROR_CATALOG.MALFORMED_REQUEST.status
+        return errorEnvelope('MALFORMED_REQUEST')
       default: {
-        set.status = 500
-        const message = error instanceof Error ? error.message : 'Internal server error'
+        set.status = ERROR_CATALOG.INTERNAL_ERROR.status
         if (!env.isProduction) console.error('[unhandled]', error)
-        return {
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: env.isProduction ? 'Internal server error' : message,
-          },
-        }
+        // Never leak internal error text in production.
+        const message = !env.isProduction && error instanceof Error ? error.message : undefined
+        return errorEnvelope('INTERNAL_ERROR', { message })
       }
     }
   },
