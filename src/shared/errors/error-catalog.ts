@@ -24,6 +24,9 @@ export const ERROR_CATALOG = {
   NOT_FOUND: { status: 404, message: 'Resource not found' },
   INTERNAL_ERROR: { status: 500, message: 'Internal server error' },
 
+  // Tables & QR sessions (US-005)
+  INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
+
   // Infrastructure
   DB_UNAVAILABLE: { status: 503, message: 'Database connectivity check failed' },
 } as const satisfies Record<string, ErrorDefinition>
