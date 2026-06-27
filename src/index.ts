@@ -14,5 +14,15 @@ async function shutdown(): Promise<void> {
   process.exit(0)
 }
 
-process.on('SIGINT', () => void shutdown())
-process.on('SIGTERM', () => void shutdown())
+process.on('SIGINT', () => {
+  shutdown().catch((err) => {
+    console.error('Error during shutdown:', err)
+    process.exit(1)
+  })
+})
+process.on('SIGTERM', () => {
+  shutdown().catch((err) => {
+    console.error('Error during shutdown:', err)
+    process.exit(1)
+  })
+})

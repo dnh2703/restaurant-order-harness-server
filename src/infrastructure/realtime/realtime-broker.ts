@@ -59,6 +59,9 @@ function createSubscriber(onClose: () => void): Subscriber {
     onClose()
   }
 
+  // Single-consumer iterator: concurrent next() calls would overwrite the pending resolver and
+  // silently hang the earlier promise. The SSE route is written to hold only one pending next()
+  // at a time, so this constraint is always satisfied in production.
   const iterator: AsyncIterableIterator<RealtimeEvent> = {
     next(): Promise<IteratorResult<RealtimeEvent>> {
       if (closed) return Promise.resolve({ value: undefined as never, done: true })
@@ -149,10 +152,16 @@ export class RealtimeBroker {
       if (this.client === client) this.publish(msg.payload)
     })
     client.on('error', () => {
-      if (this.client === client) this.scheduleReconnect()
+      if (this.client === client) {
+        this.client = null
+        this.scheduleReconnect()
+      }
     })
     client.on('end', () => {
-      if (this.client === client) this.scheduleReconnect()
+      if (this.client === client) {
+        this.client = null
+        this.scheduleReconnect()
+      }
     })
     try {
       await client.connect()

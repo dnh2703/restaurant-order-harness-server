@@ -19,17 +19,18 @@ export const streamRoutes = new Elysia().get(
   async function* ({ params }) {
     const orderId = await resolveOrderId(db, params.qrToken)
     const subscription = broker.subscribe(topicForOrder(orderId))
+    let timer: ReturnType<typeof setTimeout> | undefined
     try {
       // Hold one pending next() across keep-alive ticks so no event is dropped.
       let nextEvent = subscription.events.next()
       while (true) {
-        let timer: ReturnType<typeof setTimeout> | undefined
         const keepAlive = new Promise<typeof KEEPALIVE>((resolve) => {
           timer = setTimeout(() => resolve(KEEPALIVE), KEEPALIVE_MS)
         })
         // oxlint-disable-next-line no-await-in-loop -- sequential await required in SSE generator; Promise.all is impossible for an unbounded stream
         const result = await Promise.race([nextEvent, keepAlive])
         clearTimeout(timer)
+        timer = undefined
         if (result === KEEPALIVE) {
           yield sse({ event: 'keep-alive', data: 'ping' })
           continue
@@ -43,6 +44,7 @@ export const streamRoutes = new Elysia().get(
         nextEvent = subscription.events.next()
       }
     } finally {
+      if (timer) clearTimeout(timer)
       subscription.unsubscribe()
     }
   },
