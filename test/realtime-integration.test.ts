@@ -43,6 +43,7 @@ import {
 import { DB_TIMEOUT_MS, probeMigratedDb, WARMUP_TIMEOUT_MS } from './support/db'
 
 let schemaAvailable = false
+let brokerStarted = false
 
 /**
  * Await the next event from an async iterator, returning undefined on timeout.
@@ -98,13 +99,14 @@ beforeAll(async () => {
   schemaAvailable = await probeMigratedDb()
   if (schemaAvailable) {
     await broker.start()
+    brokerStarted = true
     // Confirm the broker's LISTEN connection is up before running tests.
     schemaAvailable = await waitForBrokerConnected(30_000)
   }
 }, WARMUP_TIMEOUT_MS)
 
 afterAll(async () => {
-  if (schemaAvailable) await broker.stop()
+  if (brokerStarted) await broker.stop()
 })
 
 // Track created entity ids so afterEach can delete in FK-safe order.
@@ -188,23 +190,24 @@ describe('realtime: DB status change → broker emits', () => {
 
       // Subscribe after INSERT so we start capturing only the UPDATE notification.
       const sub = broker.subscribe(topicForOrder(order!.id))
+      try {
+        // Act: update the status — the trigger fires pg_notify('realtime', ...) with COOKING.
+        await db.update(orderItems).set({ status: 'COOKING' }).where(eq(orderItems.id, item!.id))
 
-      // Act: update the status — the trigger fires pg_notify('realtime', ...) with COOKING.
-      await db.update(orderItems).set({ status: 'COOKING' }).where(eq(orderItems.id, item!.id))
+        // Assert: drain events until we see COOKING. If the PENDING INSERT notification
+        // races and arrives after we subscribed, we skip past it; the loop exits early
+        // once COOKING is found. After 5 attempts with a 5 s per-event timeout we give up.
+        let received: RealtimeEvent | undefined
+        for (let i = 0; i < 5; i += 1) {
+          received = await nextEvent(sub.events)
+          if (received?.status === 'COOKING') break
+        }
 
-      // Assert: drain events until we see COOKING. If the PENDING INSERT notification
-      // races and arrives after we subscribed, we skip past it; the loop exits early
-      // once COOKING is found. After 5 attempts with a 5 s per-event timeout we give up.
-      let received: RealtimeEvent | undefined
-      for (let i = 0; i < 5; i += 1) {
-        received = await nextEvent(sub.events)
-        if (received?.status === 'COOKING') break
+        expect(received?.status).toBe('COOKING')
+        expect(received?.orderId).toBe(order!.id)
+      } finally {
+        sub.unsubscribe()
       }
-
-      expect(received?.status).toBe('COOKING')
-      expect(received?.orderId).toBe(order!.id)
-
-      sub.unsubscribe()
     },
     DB_TIMEOUT_MS,
   )
