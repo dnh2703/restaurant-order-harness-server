@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -56,4 +56,28 @@ None expected; depends on US-002 schema. Search (US-2.2) tracked as candidate.
 
 ## Evidence
 
-Add after implementation.
+Verified on a live Neon branch, 2026-06-27.
+
+- **API:** `GET /api/qr/:qrToken/menu` (`src/presentation/http/routes/qr.ts`) →
+  `getMenuForQrToken` (`src/application/menu/get-menu.ts`). Returns
+  `{ data: { categories: [{ id, name, items: [{ id, name, description, price, imageUrl,
+  isAvailable, optionGroups: [{ id, name, type, isRequired, options: [{ id, name,
+  priceDelta }] }] }] }] } }`.
+- **Invalid token:** unknown/regenerated `qr_token` → `404 INVALID_TABLE` (reuses the
+  US-005 code), matching the QR session route.
+- **Grouping & ordering:** categories ordered by `sort_order` then `name`; dishes by
+  `sort_order` then `name`. Empty categories still appear (`items: []`). Sold-out dishes
+  stay in the list with `isAvailable: false` (FE dims + labels "Sold out").
+- **Scoping:** every read is joined through `categories.restaurant_id`, so a token only
+  ever returns its own restaurant's menu (no cross-restaurant leakage).
+- **Efficiency:** four explicit-column reads (categories / items / option groups /
+  options) run in parallel and are stitched in memory — fixed query count regardless of
+  menu size (no N+1), no `SELECT *`.
+- **Unit** (`test/get-menu.test.ts`): `groupMenu` proves grouping, input-order
+  preservation, empty category, option nesting, and the sold-out flag without a DB;
+  unknown token throws `INVALID_TABLE`/404 via a fake lookup.
+- **Integration** (`test/menu.test.ts`, live Neon): seeded menu (inserted out of
+  `sort_order`) returns the correct grouped/ordered shape with nested options and the
+  sold-out flag; a second restaurant's rows never leak into the read; unknown token → 404.
+  Self-skips when the DB is unmigrated/unreachable (`test/support/db.ts`).
+- **Quality gates:** `typecheck`, `oxlint`, `prettier` clean. `menu` + `get-menu` 9 pass.
