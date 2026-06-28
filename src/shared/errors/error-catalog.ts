@@ -46,6 +46,12 @@ export const ERROR_CATALOG = {
     message: 'Cannot delete a category that still has menu items',
   },
 
+  // Menu item administration (US-015)
+  MENU_ITEM_IN_USE: {
+    status: 409,
+    message: 'Cannot delete a menu item that is referenced by order history',
+  },
+
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 

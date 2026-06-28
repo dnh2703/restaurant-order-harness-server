@@ -6,6 +6,7 @@ import { authRoutes } from './routes/auth'
 import { categoriesRoutes } from './routes/categories'
 import { healthRoutes } from './routes/health'
 import { kitchenRoutes } from './routes/kitchen'
+import { menuItemsRoutes } from './routes/menu-items'
 import { qrRoutes } from './routes/qr'
 import { staffRoutes } from './routes/staff'
 import { streamRoutes } from './routes/stream'
@@ -22,6 +23,7 @@ export const app = new Elysia({ prefix: '/api' })
   .use(authRoutes)
   .use(staffRoutes)
   .use(categoriesRoutes)
+  .use(menuItemsRoutes)
   .use(kitchenRoutes)
   .use(qrRoutes)
   .use(streamRoutes)

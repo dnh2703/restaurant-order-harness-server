@@ -2,13 +2,7 @@ import { and, eq } from 'drizzle-orm'
 
 import type { Database } from '../../infrastructure/database/client'
 import { categories, menuItems } from '../../infrastructure/database/schema'
-import { AppError } from '../../shared/errors'
-
-/** Drizzle wraps driver errors; the pg error (with its SQLSTATE `code`) is the cause. */
-function pgErrorCode(error: unknown): string | undefined {
-  const e = error as { code?: string; cause?: { code?: string } }
-  return e.code ?? e.cause?.code
-}
+import { AppError, pgErrorCode } from '../../shared/errors'
 
 /**
  * Delete a category (US-014). Tenant-scoped existence check first → `CATEGORY_NOT_FOUND` (404)

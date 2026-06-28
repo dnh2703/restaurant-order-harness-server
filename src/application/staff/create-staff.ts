@@ -2,14 +2,8 @@ import type { Role } from '../../infrastructure/auth/access-token'
 import { hashPassword } from '../../infrastructure/auth/password'
 import type { Database } from '../../infrastructure/database/client'
 import { users } from '../../infrastructure/database/schema'
-import { AppError } from '../../shared/errors'
+import { AppError, pgErrorCode } from '../../shared/errors'
 import { type StaffView, toStaffView } from './staff-view'
-
-/** Drizzle wraps driver errors; the pg error (with its SQLSTATE `code`) is the cause. */
-function pgErrorCode(error: unknown): string | undefined {
-  const e = error as { code?: string; cause?: { code?: string } }
-  return e.code ?? e.cause?.code
-}
 
 export interface CreateStaffInput {
   email: string
