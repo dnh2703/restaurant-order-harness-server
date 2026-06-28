@@ -228,6 +228,7 @@ describe('menu-items CRUD', () => {
       })
       expect(res.status).toBe(404)
       expect(await errorCode(res)).toBe('MENU_ITEM_NOT_FOUND')
+      await db.delete(menuItems).where(eq(menuItems.id, bItem!.id))
     },
     DB_TIMEOUT_MS,
   )
