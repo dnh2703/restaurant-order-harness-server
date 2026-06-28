@@ -42,6 +42,9 @@ export const ERROR_CATALOG = {
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 
+  // Kitchen (US-011)
+  INVALID_TRANSITION: { status: 409, message: 'Illegal order item status transition' },
+
   // Ordering (US-007)
   MENU_ITEM_NOT_FOUND: { status: 404, message: 'Menu item does not exist for this restaurant' },
   ITEM_UNAVAILABLE: { status: 409, message: 'Menu item is currently unavailable' },

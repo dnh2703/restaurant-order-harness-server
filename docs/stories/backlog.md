@@ -19,16 +19,16 @@ Populated from `SPEC.md` via intake #1. Full decomposition:
 | E04 Ordering | US-007 add + submit order | sliced |
 | E05 Realtime | US-008 customer order stream | sliced |
 | E06 Auth & RBAC | US-009 auth + guard, US-010 staff admin | sliced |
+| E07 Kitchen | US-011 queue + status, US-012 sold-out, US-013 staff stream | sliced |
 
 Story files: `docs/stories/epics/`. Durable rows: `harness-cli query matrix`.
 
 ## Candidate Epics (not yet sliced)
 
-> E07–E10 depend on **E06 Auth & RBAC** (now sliced; all staff screens are role-guarded).
+> E08–E10 depend on **E06 Auth & RBAC** (now sliced; all staff screens are role-guarded).
 
 | Epic | Candidate stories | SPEC | Risk | Status |
 | --- | --- | --- | --- | --- |
-| E07 Kitchen | queue, status transition, sold-out toggle | EPIC 4 | normal | unsliced |
 | E08 Cashier & payment | open tables, bill detail, discount, checkout | EPIC 5 | high-risk (money) | unsliced |
 | E09 Admin menu/table CRUD | categories, dishes, options, tables, QR export | EPIC 6 + US-1.3 | normal | unsliced |
 | E10 Reports | revenue by range, top dishes | EPIC 7 | normal | unsliced |
@@ -39,4 +39,4 @@ Story files: `docs/stories/epics/`. Durable rows: `harness-cli query matrix`.
 - US-2.3 dish detail + option selection UI — E03 follow-up.
 - US-3.3 live status view (customer) — covered by US-008 stream consumer.
 - US-3.4 call staff / request bill — E04 follow-up.
-- US-9.1 staff restaurant-wide SSE stream — sliced with E07 on the US-008 broker.
+- US-9.1 staff restaurant-wide SSE stream — sliced as E07/US-013 on the US-008 broker.
