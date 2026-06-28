@@ -4,9 +4,18 @@ import { eq, inArray } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
 import { createMenuItemUseCase } from '../../src/application/menu-items/create-menu-item'
+import { deleteMenuItemUseCase } from '../../src/application/menu-items/delete-menu-item'
 import { listMenuItemsUseCase } from '../../src/application/menu-items/list-menu-items'
+import { updateMenuItemUseCase } from '../../src/application/menu-items/update-menu-item'
 import { db } from '../../src/infrastructure/database/client'
-import { categories, menuItems, restaurants } from '../../src/infrastructure/database/schema'
+import {
+  categories,
+  menuItems,
+  orderItems,
+  orders,
+  restaurants,
+  tables,
+} from '../../src/infrastructure/database/schema'
 import { DB_TIMEOUT_MS, probeMigratedDb, WARMUP_TIMEOUT_MS } from '../support/db'
 
 let schemaAvailable = false
@@ -120,6 +129,176 @@ describe('listMenuItemsUseCase', () => {
       const drinksOnly = await listMenuItemsUseCase(db, restaurantId, category2Id)
       expect(drinksOnly.every((i) => i.categoryId === category2Id)).toBe(true)
       expect(drinksOnly.some((i) => i.name === 'Pho')).toBe(false)
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
+describe('updateMenuItemUseCase', () => {
+  it(
+    'patches only the fields provided',
+    async () => {
+      if (!schemaAvailable) return
+      const created = await createMenuItemUseCase(db, restaurantId, {
+        categoryId,
+        name: 'Temp',
+        price: 1000,
+        sortOrder: 3,
+      })
+      const updated = await updateMenuItemUseCase(db, restaurantId, created.id, { price: 2000 })
+      expect(updated.price).toBe(2000)
+      expect(updated.name).toBe('Temp')
+      expect(updated.sortOrder).toBe(3)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'moves an item to another of the restaurant categories',
+    async () => {
+      if (!schemaAvailable) return
+      const created = await createMenuItemUseCase(db, restaurantId, {
+        categoryId,
+        name: 'Movable',
+        price: 1000,
+      })
+      const moved = await updateMenuItemUseCase(db, restaurantId, created.id, {
+        categoryId: category2Id,
+      })
+      expect(moved.categoryId).toBe(category2Id)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws MENU_ITEM_NOT_FOUND for an item owned by another restaurant',
+    async () => {
+      if (!schemaAvailable) return
+      const [r2] = await db
+        .insert(restaurants)
+        .values({ name: `US-015 Other ${randomUUID()}` })
+        .returning({ id: restaurants.id })
+      const [foreignCat] = await db
+        .insert(categories)
+        .values({ restaurantId: r2!.id, name: 'Foreign', sortOrder: 0 })
+        .returning({ id: categories.id })
+      const foreignItem = await createMenuItemUseCase(db, r2!.id, {
+        categoryId: foreignCat!.id,
+        name: 'Theirs',
+        price: 1000,
+      })
+      await expect(
+        updateMenuItemUseCase(db, restaurantId, foreignItem.id, { name: 'Hijack' }),
+      ).rejects.toMatchObject({ code: 'MENU_ITEM_NOT_FOUND' })
+      await db.delete(menuItems).where(eq(menuItems.id, foreignItem.id))
+      await db.delete(categories).where(eq(categories.id, foreignCat!.id))
+      await db.delete(restaurants).where(eq(restaurants.id, r2!.id))
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws CATEGORY_NOT_FOUND when moving into another restaurant category',
+    async () => {
+      if (!schemaAvailable) return
+      const created = await createMenuItemUseCase(db, restaurantId, {
+        categoryId,
+        name: 'StayHome',
+        price: 1000,
+      })
+      const [r2] = await db
+        .insert(restaurants)
+        .values({ name: `US-015 Other ${randomUUID()}` })
+        .returning({ id: restaurants.id })
+      const [foreignCat] = await db
+        .insert(categories)
+        .values({ restaurantId: r2!.id, name: 'Foreign', sortOrder: 0 })
+        .returning({ id: categories.id })
+      await expect(
+        updateMenuItemUseCase(db, restaurantId, created.id, { categoryId: foreignCat!.id }),
+      ).rejects.toMatchObject({ code: 'CATEGORY_NOT_FOUND' })
+      await db.delete(categories).where(eq(categories.id, foreignCat!.id))
+      await db.delete(restaurants).where(eq(restaurants.id, r2!.id))
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
+describe('deleteMenuItemUseCase', () => {
+  it(
+    'deletes an item with no order history',
+    async () => {
+      if (!schemaAvailable) return
+      const created = await createMenuItemUseCase(db, restaurantId, {
+        categoryId,
+        name: 'ToDelete',
+        price: 1000,
+      })
+      await deleteMenuItemUseCase(db, restaurantId, created.id)
+      const all = await listMenuItemsUseCase(db, restaurantId)
+      expect(all.some((i) => i.id === created.id)).toBe(false)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'refuses to delete an item referenced by order history — MENU_ITEM_IN_USE',
+    async () => {
+      if (!schemaAvailable) return
+      const item = await createMenuItemUseCase(db, restaurantId, {
+        categoryId,
+        name: 'Ordered',
+        price: 1000,
+      })
+      const [table] = await db
+        .insert(tables)
+        .values({ restaurantId, name: 'T1', qrToken: `qr-${randomUUID()}` })
+        .returning({ id: tables.id })
+      const [order] = await db
+        .insert(orders)
+        .values({ restaurantId, tableId: table!.id })
+        .returning({ id: orders.id })
+      await db.insert(orderItems).values({
+        orderId: order!.id,
+        menuItemId: item.id,
+        nameSnapshot: item.name,
+        unitPrice: item.price,
+        quantity: 1,
+      })
+      await expect(deleteMenuItemUseCase(db, restaurantId, item.id)).rejects.toMatchObject({
+        code: 'MENU_ITEM_IN_USE',
+      })
+      // cleanup the order chain so afterAll can drop categories/restaurant
+      await db.delete(orders).where(eq(orders.id, order!.id)) // cascades order_items
+      await db.delete(tables).where(eq(tables.id, table!.id))
+      await db.delete(menuItems).where(eq(menuItems.id, item.id))
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws MENU_ITEM_NOT_FOUND for an item owned by another restaurant',
+    async () => {
+      if (!schemaAvailable) return
+      const [r2] = await db
+        .insert(restaurants)
+        .values({ name: `US-015 Other ${randomUUID()}` })
+        .returning({ id: restaurants.id })
+      const [foreignCat] = await db
+        .insert(categories)
+        .values({ restaurantId: r2!.id, name: 'Foreign', sortOrder: 0 })
+        .returning({ id: categories.id })
+      const foreignItem = await createMenuItemUseCase(db, r2!.id, {
+        categoryId: foreignCat!.id,
+        name: 'Theirs',
+        price: 1000,
+      })
+      await expect(deleteMenuItemUseCase(db, restaurantId, foreignItem.id)).rejects.toMatchObject({
+        code: 'MENU_ITEM_NOT_FOUND',
+      })
+      await db.delete(menuItems).where(eq(menuItems.id, foreignItem.id))
+      await db.delete(categories).where(eq(categories.id, foreignCat!.id))
+      await db.delete(restaurants).where(eq(restaurants.id, r2!.id))
     },
     DB_TIMEOUT_MS,
   )
