@@ -102,7 +102,9 @@ Guarded staff SSE (`['KITCHEN','CASHIER','ADMIN']`). Subscribes to
 `topicForRestaurant(auth.restaurantId)`. The `:id` path param **must equal**
 `auth.restaurantId`, else `403 FORBIDDEN` — a staff token cannot watch another tenant's
 stream. Keep-alive ticks + `finally`-unsubscribe mirror the customer stream (`stream.ts`).
-Emits `event: order_item.updated` with `{ orderItemId, orderId, status, tableName? }`.
+Emits `event: order_item.updated` with `{ orderItemId, orderId, status }` (same shape as the
+customer stream — no per-event DB lookup in the SSE hot path; the FE refetches
+`GET /api/kitchen/queue` for card details on receipt).
 
 > FE note (out of BE scope): browser `EventSource` cannot send an `Authorization` header,
 > so the staff FE will use a fetch-based SSE client / polyfill to carry the Bearer token.
