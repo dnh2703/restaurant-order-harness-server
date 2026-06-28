@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { randomUUID } from 'node:crypto'
 
 import { createTableUseCase } from '../../src/application/tables/create-table'
+import { deleteTableUseCase } from '../../src/application/tables/delete-table'
 import { listTablesUseCase } from '../../src/application/tables/list-tables'
 import { regenerateQrUseCase } from '../../src/application/tables/regenerate-qr'
 import { updateTableUseCase } from '../../src/application/tables/update-table'
@@ -85,6 +86,24 @@ describe('tables use-cases', () => {
 
       await expect(regenerateQrUseCase(db, restaurantId, randomUUID())).rejects.toEqual(
         new AppError('TABLE_NOT_FOUND'),
+      )
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'delete removes an empty table but refuses one with an OPEN order',
+    async () => {
+      if (!schemaAvailable) return
+      const empty = await createTableUseCase(db, restaurantId, { name: 'Removable' })
+      await deleteTableUseCase(db, restaurantId, empty.id)
+      const after = await listTablesUseCase(db, restaurantId)
+      expect(after.some((t) => t.id === empty.id)).toBe(false)
+
+      const busy = await createTableUseCase(db, restaurantId, { name: 'Busy' })
+      await db.insert(orders).values({ restaurantId, tableId: busy.id })
+      await expect(deleteTableUseCase(db, restaurantId, busy.id)).rejects.toEqual(
+        new AppError('TABLE_IN_USE'),
       )
     },
     DB_TIMEOUT_MS,
