@@ -1540,29 +1540,28 @@ git commit -m "feat(us-016): option-groups + options CRUD route + mount"
 
 ---
 
-### Task 6: Story packet + validation record + backlog
+### Task 6: Validation record + backlog status
+
+> The story overview (`overview.md`) and the backlog `in_progress` entry were sliced **up front**
+> (commit `docs(e09): slice US-016 options CRUD story packet`), matching the US-014 convention. This
+> task closes the packet out: the validation record at the end + flipping the backlog to done.
 
 **Files:**
-- Create: `docs/stories/epics/E09-admin-crud/US-016-options-crud/overview.md`
 - Create: `docs/stories/epics/E09-admin-crud/US-016-options-crud/validation.md`
 - Modify: `docs/stories/backlog.md:23`
 
 **Interfaces:** none (docs only).
 
-- [ ] **Step 1: Write the story overview**
-
-Create `docs/stories/epics/E09-admin-crud/US-016-options-crud/overview.md`, mirroring the structure of `docs/stories/epics/E09-admin-crud/US-015-menu-items-crud/overview.md` (sections: Current Behavior, Target Behavior, Affected Users, Affected Product Docs, Design Notes, Validation table, Harness Delta, Non-Goals). Adapt the content from the design spec `docs/superpowers/specs/2026-06-28-us-016-option-groups-crud-design.md`. Emphasize: nested routes under `/api/menu-items/:menuItemId/option-groups`; tenancy one join deeper (`option → group → menu_item → category → restaurant`); **no in-use guard** (order history snapshots with no FK); cascade `menu_item → group → option`; new errors `OPTION_GROUP_NOT_FOUND`, `OPTION_NOT_FOUND`; ordering by `name`; negative `priceDelta` allowed.
-
-- [ ] **Step 2: Write the validation record**
+- [ ] **Step 1: Write the validation record**
 
 Create `docs/stories/epics/E09-admin-crud/US-016-options-crud/validation.md`, mirroring `docs/stories/epics/E09-admin-crud/US-015-menu-items-crud/validation.md`: a Proof Status section with the `harness-cli story update` line for US-016 (`--unit 1 --integration 1 --e2e 0 --platform 0`), a Layer → Proof table, and an Evidence section. Fill the evidence from the final `bun test` run (record the exact pass/fail counts and the option-groups suite counts) and note DB-suite self-skip behavior.
 
-- [ ] **Step 3: Update the backlog**
+- [ ] **Step 2: Update the backlog status to done**
 
 In `docs/stories/backlog.md`, line 23, update the E09 row Status. Change:
 
 ```
-| E09 Admin CRUD | US-014 categories, US-015 menu-items, US-016 options, US-017 tables + QR | slicing (US-014, US-015 done; US-016 next) |
+| E09 Admin CRUD | US-014 categories, US-015 menu-items, US-016 options, US-017 tables + QR | slicing (US-014, US-015 done; US-016 in_progress) |
 ```
 
 to:
@@ -1571,7 +1570,7 @@ to:
 | E09 Admin CRUD | US-014 categories, US-015 menu-items, US-016 options, US-017 tables + QR | slicing (US-014, US-015, US-016 done; US-017 next) |
 ```
 
-- [ ] **Step 4: Run the full suite for the validation evidence**
+- [ ] **Step 3: Run the full suite for the validation evidence**
 
 Run: `bun test 2>&1 | tail -15`
 Expected: all pass (or DB suites self-skip if no DB) — record the counts into `validation.md`.
@@ -1579,11 +1578,11 @@ Expected: all pass (or DB suites self-skip if no DB) — record the counts into 
 Run: `bun run typecheck && bun run lint`
 Expected: both clean.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add docs/stories docs/superpowers/plans
-git commit -m "docs(us-016): story packet + validation record + backlog"
+git commit -m "docs(us-016): validation record + backlog status"
 ```
 
 ---
