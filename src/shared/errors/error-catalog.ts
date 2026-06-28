@@ -52,6 +52,10 @@ export const ERROR_CATALOG = {
     message: 'Cannot delete a menu item that is referenced by order history',
   },
 
+  // Option groups & options administration (US-016)
+  OPTION_GROUP_NOT_FOUND: { status: 404, message: 'Option group not found' },
+  OPTION_NOT_FOUND: { status: 404, message: 'Option not found' },
+
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 
