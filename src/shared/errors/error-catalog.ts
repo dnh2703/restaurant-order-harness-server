@@ -56,6 +56,13 @@ export const ERROR_CATALOG = {
   OPTION_GROUP_NOT_FOUND: { status: 404, message: 'Option group not found' },
   OPTION_NOT_FOUND: { status: 404, message: 'Option not found' },
 
+  // Table administration (US-017)
+  TABLE_NOT_FOUND: { status: 404, message: 'Table not found' },
+  TABLE_IN_USE: {
+    status: 409,
+    message: 'Cannot delete a table referenced by an order',
+  },
+
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 

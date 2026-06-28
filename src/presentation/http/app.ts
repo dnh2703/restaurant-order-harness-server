@@ -11,6 +11,7 @@ import { optionGroupsRoutes } from './routes/option-groups'
 import { qrRoutes } from './routes/qr'
 import { staffRoutes } from './routes/staff'
 import { streamRoutes } from './routes/stream'
+import { tablesRoutes } from './routes/tables'
 
 /**
  * HTTP application composition root. All routes are mounted under /api
@@ -28,6 +29,7 @@ export const app = new Elysia({ prefix: '/api' })
   .use(optionGroupsRoutes)
   .use(kitchenRoutes)
   .use(qrRoutes)
+  .use(tablesRoutes)
   .use(streamRoutes)
 
 export type App = typeof app
