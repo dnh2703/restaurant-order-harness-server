@@ -215,6 +215,43 @@ describe('tables CRUD', () => {
   )
 
   it(
+    'cannot delete or regenerate another restaurant table — 404 TABLE_NOT_FOUND',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminAEmail)
+      const [bTable] = await db
+        .insert(tables)
+        .values({ restaurantId: restaurantBId, name: 'B table 2', qrToken: `tok-${randomUUID()}` })
+        .returning({ id: tables.id })
+      const delRes = await req(`/tables/${bTable!.id}`, { method: 'DELETE', token })
+      expect(delRes.status).toBe(404)
+      expect(await errorCode(delRes)).toBe('TABLE_NOT_FOUND')
+      const regenRes = await req(`/tables/${bTable!.id}/regenerate-qr`, { method: 'POST', token })
+      expect(regenRes.status).toBe(404)
+      expect(await errorCode(regenRes)).toBe('TABLE_NOT_FOUND')
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'rejects an empty PATCH body',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminAEmail)
+      const created = await req('/tables', {
+        method: 'POST',
+        token,
+        body: { name: 'EmptyPatch' },
+      })
+      const { data: c } = (await created.json()) as { data: { table: { id: string } } }
+      const id = c.table.id
+      const res = await req(`/tables/${id}`, { method: 'PATCH', token, body: {} })
+      expect(res.status).toBe(400)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
     'refuses to delete a table that has an OPEN order — 409 TABLE_IN_USE',
     async () => {
       if (!schemaAvailable) return
