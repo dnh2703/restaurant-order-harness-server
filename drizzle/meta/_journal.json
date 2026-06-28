@@ -15,6 +15,13 @@
       "when": 1782584683499,
       "tag": "0001_order_item_notify",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782633628952,
+      "tag": "0002_order_item_notify_restaurant",
+      "breakpoints": true
     }
   ]
 }
