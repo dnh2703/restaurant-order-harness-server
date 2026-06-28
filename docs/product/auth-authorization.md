@@ -67,8 +67,19 @@ context, and enforces role per route group:
 
 ## Staff Account Management (US-8.4)
 
-- `ADMIN` can CRUD staff accounts and assign roles within their restaurant.
-- Deactivating a user (`is_active = false`) revokes all their refresh tokens.
+- `ADMIN` manages staff within their own restaurant (US-010), via `/api/staff`:
+  - `GET /api/staff` — list staff (tenant-scoped; never another restaurant's users).
+  - `POST /api/staff` — create staff with email + initial password (hashed), name, role → `201`.
+  - `PATCH /api/staff/:id` — update name and/or role.
+  - `PATCH /api/staff/:id/active` — activate/deactivate.
+- `restaurantId` always comes from the admin's token claims, never the request body.
+- Deactivating a user (`is_active = false`) revokes all their refresh tokens, so existing
+  sessions can no longer refresh.
+- The last active `ADMIN` of a restaurant cannot be demoted or deactivated
+  (`409 LAST_ADMIN`), so a restaurant is never left without an administrator.
+- Errors: `409 EMAIL_TAKEN` (duplicate email), `404 USER_NOT_FOUND` (incl. another
+  restaurant's id — existence is not revealed), `409 LAST_ADMIN`, `403 FORBIDDEN`
+  (non-admin). Responses never include `password_hash`.
 
 ## Validation Shape
 

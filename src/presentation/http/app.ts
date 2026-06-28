@@ -5,6 +5,7 @@ import { openapiPlugin } from './plugins/openapi'
 import { authRoutes } from './routes/auth'
 import { healthRoutes } from './routes/health'
 import { qrRoutes } from './routes/qr'
+import { staffRoutes } from './routes/staff'
 import { streamRoutes } from './routes/stream'
 
 /**
@@ -17,6 +18,7 @@ export const app = new Elysia({ prefix: '/api' })
   .use(openapiPlugin)
   .use(healthRoutes)
   .use(authRoutes)
+  .use(staffRoutes)
   .use(qrRoutes)
   .use(streamRoutes)
 

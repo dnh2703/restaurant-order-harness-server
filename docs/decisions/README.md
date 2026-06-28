@@ -39,3 +39,4 @@ Add a decision when:
 - [0008 Restaurant QR Ordering Architecture & Product Contract](0008-restaurant-qr-architecture.md)
 - [0009 CI Pipeline & API Documentation](0009-ci-and-api-docs.md)
 - [0010 Refresh Token Rotation & Reuse Detection](0010-refresh-token-rotation.md)
+- [0011 Last-Admin Protection](0011-last-admin-protection.md)

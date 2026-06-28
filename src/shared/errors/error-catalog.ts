@@ -31,6 +31,14 @@ export const ERROR_CATALOG = {
   TOKEN_EXPIRED: { status: 401, message: 'Refresh token has expired' },
   FORBIDDEN: { status: 403, message: 'You do not have access to this resource' },
 
+  // Staff administration (US-010)
+  EMAIL_TAKEN: { status: 409, message: 'A user with this email already exists' },
+  USER_NOT_FOUND: { status: 404, message: 'User not found' },
+  LAST_ADMIN: {
+    status: 409,
+    message: 'Cannot demote or deactivate the last active admin of the restaurant',
+  },
+
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 
