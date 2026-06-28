@@ -89,6 +89,24 @@ describe('updateCategoryUseCase', () => {
     },
     DB_TIMEOUT_MS,
   )
+
+  it(
+    'throws CATEGORY_NOT_FOUND for a category owned by another restaurant',
+    async () => {
+      if (!schemaAvailable) return
+      const [r2] = await db
+        .insert(restaurants)
+        .values({ name: `US-014 Other ${randomUUID()}` })
+        .returning({ id: restaurants.id })
+      const other = await createCategoryUseCase(db, r2!.id, { name: 'Foreign' })
+      await expect(
+        updateCategoryUseCase(db, restaurantId, other.id, { name: 'Hijack' }),
+      ).rejects.toMatchObject({ code: 'CATEGORY_NOT_FOUND' })
+      await db.delete(categories).where(eq(categories.id, other.id))
+      await db.delete(restaurants).where(eq(restaurants.id, r2!.id))
+    },
+    DB_TIMEOUT_MS,
+  )
 })
 
 describe('deleteCategoryUseCase', () => {
@@ -112,6 +130,24 @@ describe('deleteCategoryUseCase', () => {
       await db.insert(menuItems).values({ categoryId: created.id, name: 'Dish', price: 1000 })
       const call = deleteCategoryUseCase(db, restaurantId, created.id)
       await expect(call).rejects.toMatchObject({ code: 'CATEGORY_NOT_EMPTY' })
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws CATEGORY_NOT_FOUND for a category owned by another restaurant',
+    async () => {
+      if (!schemaAvailable) return
+      const [r2] = await db
+        .insert(restaurants)
+        .values({ name: `US-014 Other ${randomUUID()}` })
+        .returning({ id: restaurants.id })
+      const other = await createCategoryUseCase(db, r2!.id, { name: 'Foreign' })
+      await expect(deleteCategoryUseCase(db, restaurantId, other.id)).rejects.toMatchObject({
+        code: 'CATEGORY_NOT_FOUND',
+      })
+      await db.delete(categories).where(eq(categories.id, other.id))
+      await db.delete(restaurants).where(eq(restaurants.id, r2!.id))
     },
     DB_TIMEOUT_MS,
   )
