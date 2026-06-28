@@ -5,6 +5,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   RealtimeBroker,
   topicForOrder as topic,
+  topicForRestaurant,
 } from '../src/infrastructure/realtime/realtime-broker'
 
 /** Minimal fake pg.Client that records LISTEN and lets the test emit error/end. */
@@ -177,5 +178,49 @@ describe('RealtimeBroker fan-out', () => {
     sub.unsubscribe() // hard stop
     const result = await sub.events.next() // should return { done: true }
     expect(result.done).toBe(true)
+  })
+})
+
+describe('restaurant-topic fan-out', () => {
+  it('delivers one NOTIFY to both the order and restaurant subscribers', async () => {
+    const broker = new RealtimeBroker({ connectionString: 'unused' })
+    const orderSub = broker.subscribe(topic('order-1'))
+    const restoSub = broker.subscribe(topicForRestaurant('resto-1'))
+
+    broker.publish(
+      JSON.stringify({
+        type: 'order_item',
+        restaurantId: 'resto-1',
+        orderId: 'order-1',
+        orderItemId: 'item-1',
+        status: 'COOKING',
+        op: 'UPDATE',
+      }),
+    )
+
+    const fromOrder = await orderSub.events.next()
+    const fromResto = await restoSub.events.next()
+    expect(fromOrder.value.orderItemId).toBe('item-1')
+    expect(fromResto.value.orderItemId).toBe('item-1')
+    expect(fromResto.value.restaurantId).toBe('resto-1')
+    orderSub.unsubscribe()
+    restoSub.unsubscribe()
+  })
+
+  it('still routes a legacy payload without restaurantId to the order subscriber', async () => {
+    const broker = new RealtimeBroker({ connectionString: 'unused' })
+    const orderSub = broker.subscribe(topic('order-2'))
+    broker.publish(
+      JSON.stringify({
+        type: 'order_item',
+        orderId: 'order-2',
+        orderItemId: 'item-2',
+        status: 'PENDING',
+        op: 'INSERT',
+      }),
+    )
+    const evt = await orderSub.events.next()
+    expect(evt.value.orderItemId).toBe('item-2')
+    orderSub.unsubscribe()
   })
 })

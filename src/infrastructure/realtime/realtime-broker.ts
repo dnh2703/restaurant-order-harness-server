@@ -7,6 +7,7 @@ export type OrderItemStatus = 'PENDING' | 'COOKING' | 'SERVED' | 'CANCELLED'
 
 export interface RealtimeEvent {
   type: 'order_item'
+  restaurantId?: string
   orderId: string
   orderItemId: string
   status: OrderItemStatus
@@ -23,6 +24,10 @@ const CHANNEL = 'realtime'
 
 export function topicForOrder(orderId: string): string {
   return `order:${orderId}`
+}
+
+export function topicForRestaurant(restaurantId: string): string {
+  return `restaurant:${restaurantId}`
 }
 
 interface Subscriber {
@@ -134,7 +139,13 @@ export class RealtimeBroker {
       return // ignore malformed payloads
     }
     if (event.type !== 'order_item' || !event.orderId) return
-    const subscribers = this.topics.get(topicForOrder(event.orderId))
+    this.deliver(topicForOrder(event.orderId), event)
+    if (event.restaurantId) this.deliver(topicForRestaurant(event.restaurantId), event)
+  }
+
+  /** Push an event to every subscriber on one topic. */
+  private deliver(topic: string, event: RealtimeEvent): void {
+    const subscribers = this.topics.get(topic)
     if (!subscribers) return
     for (const subscriber of subscribers) subscriber.push(event)
   }
