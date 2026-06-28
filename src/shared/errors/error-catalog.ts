@@ -39,6 +39,13 @@ export const ERROR_CATALOG = {
     message: 'Cannot demote or deactivate the last active admin of the restaurant',
   },
 
+  // Menu category administration (US-014)
+  CATEGORY_NOT_FOUND: { status: 404, message: 'Category not found' },
+  CATEGORY_NOT_EMPTY: {
+    status: 409,
+    message: 'Cannot delete a category that still has menu items',
+  },
+
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 
