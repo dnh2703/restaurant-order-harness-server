@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { Pool } from 'pg'
+import { Client, Pool } from 'pg'
 
 import { env } from '../config/env'
 import * as schema from './schema'
@@ -28,3 +28,17 @@ export const pool = new Pool({
 export const db = drizzle({ client: pool, schema, casing: 'snake_case' })
 
 export type Database = typeof db
+
+/**
+ * A standalone, direct (non-pooled) connection for the realtime broker's LISTEN/NOTIFY.
+ * PgBouncer transaction pooling (Neon's -pooler host used by DATABASE_URL) cannot hold a
+ * LISTEN, so the broker connects to DATABASE_URL_UNPOOLED with its own single Client.
+ * Same cold-start tuning rationale as the app pool.
+ */
+export function createListenerClient(connectionString: string): Client {
+  return new Client({
+    connectionString,
+    connectionTimeoutMillis: 10_000,
+    keepAlive: true,
+  })
+}

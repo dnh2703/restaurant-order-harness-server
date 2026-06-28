@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+done
 
 ## Lane
 
@@ -60,4 +60,20 @@ on this and is sliced with E07.
 
 ## Evidence
 
-Add after implementation.
+Implemented on branch `feat/us-008-customer-order-stream`. All verification gates pass.
+
+**Artifacts:**
+
+- `test/realtime-broker.test.ts` — broker unit tests: fan-out routing, payload shape, subscriber add/remove, lifecycle start/stop, reconnect/backoff
+- `test/resolve-order-id.test.ts` — read-only orderId lookup via qrToken (no order creation)
+- `test/stream.test.ts` — SSE route integration: qrToken auth, 404 for unknown token, 404 when no open order
+- `test/realtime-integration.test.ts` — end-to-end trigger→broker integration: DB NOTIFY propagates to subscribed test client
+
+- `drizzle/0001_order_item_notify.sql` — Postgres trigger migration: emits `NOTIFY realtime` on `order_items` insert/status change
+- `src/infrastructure/realtime/realtime-broker.ts` — `RealtimeBroker`: single unpooled LISTEN connection, in-memory fan-out by `order:<id>`, reconnect/backoff
+- `src/presentation/http/routes/stream.ts` — `GET /api/qr/:qrToken/stream` SSE route; authorized by qrToken; keep-alive; no snapshot (FE polls GET /order as fallback)
+- `DATABASE_URL_UNPOOLED` — new env var for the broker's direct (non-PgBouncer) Postgres connection
+
+**Validation run (2026-06-28):** `bun run typecheck` ✓, `bun run lint` ✓, `bun run format:check` ✓. `bun test`: 57 pass, 3 fail on first run (Neon cold-start timeouts in `qr-session`, `stream`, `menu` suites — pre-existing environmental flake). Re-run of those 3 suites on a warm connection: 9 pass, 0 fail. Realtime-broker, resolve-order-id, and realtime-integration suites passed in the first run.
+
+Harness recorded: `scripts/bin/harness-cli story update --id US-008 --unit 1 --integration 1 --e2e 0 --platform 1` → `Story US-008 updated.`

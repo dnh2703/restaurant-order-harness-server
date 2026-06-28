@@ -17,6 +17,7 @@ jobs:
       # loads. The suite stays DB-free: health hits its 503 branch, the orders
       # invariant test self-skips. No secrets needed.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DATABASE_URL_UNPOOLED: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
