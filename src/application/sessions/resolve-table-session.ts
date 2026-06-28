@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 
 import type { Database } from '../../infrastructure/database/client'
 import { orders, restaurants, tables } from '../../infrastructure/database/schema'
-import { AppError } from '../../shared/errors'
+import { AppError, pgErrorCode } from '../../shared/errors'
 
 /**
  * Customer session header returned when a QR code resolves to a table (US-005).
@@ -13,12 +13,6 @@ export interface TableSession {
   restaurant: { name: string }
   table: { id: string; name: string; status: 'EMPTY' | 'OCCUPIED' }
   session: { orderId: string; status: 'OPEN'; openedAt: string }
-}
-
-/** Drizzle wraps driver errors; the pg error (with its SQLSTATE `code`) is the cause. */
-function pgErrorCode(error: unknown): string | undefined {
-  const e = error as { code?: string; cause?: { code?: string } }
-  return e.code ?? e.cause?.code
 }
 
 async function findOpenOrder(database: Database, tableId: string) {

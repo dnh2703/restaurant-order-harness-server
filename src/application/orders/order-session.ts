@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 
 import type { Database } from '../../infrastructure/database/client'
 import { orders, tables } from '../../infrastructure/database/schema'
-import { AppError } from '../../shared/errors'
+import { AppError, pgErrorCode } from '../../shared/errors'
 
 /**
  * The table's current session: its single OPEN order plus the ids the ordering use-cases need
@@ -12,12 +12,6 @@ export interface OpenOrderContext {
   orderId: string
   tableId: string
   restaurantId: string
-}
-
-/** Drizzle wraps driver errors; the pg error (with its SQLSTATE `code`) is the cause. */
-function pgErrorCode(error: unknown): string | undefined {
-  const e = error as { code?: string; cause?: { code?: string } }
-  return e.code ?? e.cause?.code
 }
 
 async function findOpenOrder(
