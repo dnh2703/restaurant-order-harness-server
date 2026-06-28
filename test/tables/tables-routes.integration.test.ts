@@ -252,7 +252,7 @@ describe('tables CRUD', () => {
   )
 
   it(
-    'refuses to delete a table that has an OPEN order — 409 TABLE_IN_USE',
+    'refuses to delete a table referenced by an order — 409 TABLE_IN_USE',
     async () => {
       if (!schemaAvailable) return
       const token = await tokenFor(adminAEmail)
@@ -260,7 +260,9 @@ describe('tables CRUD', () => {
         .insert(tables)
         .values({ restaurantId: restaurantAId, name: 'Busy', qrToken: `tok-${randomUUID()}` })
         .returning({ id: tables.id })
-      await db.insert(orders).values({ restaurantId: restaurantAId, tableId: table!.id })
+      await db
+        .insert(orders)
+        .values({ restaurantId: restaurantAId, tableId: table!.id, status: 'PAID' })
       const res = await req(`/tables/${table!.id}`, { method: 'DELETE', token })
       expect(res.status).toBe(409)
       expect(await errorCode(res)).toBe('TABLE_IN_USE')

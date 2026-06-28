@@ -17,7 +17,7 @@ guarded by `authGuard` + `.guard({ auth: ['ADMIN'] })`:
 | GET | `/tables` | List the restaurant's tables, ordered by `name`. |
 | POST | `/tables` | `{ name, capacity? }` → `201`. Server mints `qrToken`; `status` defaults `EMPTY`. |
 | PATCH | `/tables/:id` | Partial patch `{ name?, capacity? }` (≥1 field). Not in tenant → `404 TABLE_NOT_FOUND`. |
-| DELETE | `/tables/:id` | `204`. Table with an `OPEN` order → `409 TABLE_IN_USE`. Not in tenant → `404 TABLE_NOT_FOUND`. |
+| DELETE | `/tables/:id` | `204`. Table referenced by any order → `409 TABLE_IN_USE`. Not in tenant → `404 TABLE_NOT_FOUND`. |
 | POST | `/tables/:id/regenerate-qr` | Mint a new `qrToken` (old QR stops resolving) → returns the table. Not in tenant → `404 TABLE_NOT_FOUND`. |
 
 Every route is guarded by `authGuard` + `.guard({ auth: ['ADMIN'] })` and tenant-scoped: the
@@ -50,11 +50,11 @@ restaurant always comes from `auth.restaurantId`, never the request body or para
 - **Status:** `status` (`EMPTY` | `OCCUPIED`) is **read-only**. Never accepted in create or update
   bodies (stripped by schema). Create always starts a table `EMPTY` (the schema default); transitions
   are system-managed by the session lifecycle (US-005 opens an order; future US-5.4 closes it).
-- **Delete — in-use guard:** Mirrors US-015's `MENU_ITEM_IN_USE`. A table is refused while it still
-  has an `OPEN` order: existence check first → `TABLE_NOT_FOUND` (404) for missing/cross-tenant;
-  count `orders WHERE table_id = :id AND status = 'OPEN'` → if any, `TABLE_IN_USE` (409).
-  `orders.table_id` is a non-cascading FK, so a concurrent order insert raises SQLSTATE `23503`
-  (mapped to `TABLE_IN_USE` as a race-safe backstop under Neon transaction pooling).
+- **Delete — in-use guard:** Mirrors US-015's `MENU_ITEM_IN_USE`. A table is refused while it is
+  referenced by ANY order (any status, including historical PAID/CANCELLED): existence check first →
+  `TABLE_NOT_FOUND` (404) for missing/cross-tenant; count `orders WHERE table_id = :id` → if any,
+  `TABLE_IN_USE` (409). `orders.table_id` is a non-cascading FK, so a concurrent order insert raises
+  SQLSTATE `23503` (mapped to `TABLE_IN_USE` as a race-safe backstop under Neon transaction pooling).
 - **Regenerate QR:** Tenant-scoped `UPDATE qr_token = randomUUID()` with `RETURNING`; empty result →
   `TABLE_NOT_FOUND`. The old token immediately stops resolving in `GET /api/qr/:qrToken` (US-005).
 - **Queries/Commands:** `list-tables`, `create-table`, `update-table`, `delete-table`,
@@ -67,7 +67,7 @@ restaurant always comes from `auth.restaurantId`, never the request body or para
 | Code | Status | Notes |
 | --- | --- | --- |
 | `TABLE_NOT_FOUND` | **404 (new)** | Table missing or in another restaurant. |
-| `TABLE_IN_USE` | **409 (new)** | Table still has an `OPEN` order; delete refused. |
+| `TABLE_IN_USE` | **409 (new)** | Table is referenced by an order (any status); delete refused. |
 
 (`INVALID_TABLE` 404 already exists for the *customer* QR-resolve path and is unrelated — it stays.)
 
@@ -76,7 +76,7 @@ restaurant always comes from `auth.restaurantId`, never the request body or para
 | Layer | Expected proof |
 | --- | --- |
 | Unit | `toTableView` maps a row; create mints a non-empty `qrToken` and defaults `status='EMPTY'`; update patches only sent fields; regenerate yields a different token. |
-| Integration | CRUD persists; tenant-scoped (admin A → restaurant B's table = `404 TABLE_NOT_FOUND`); delete a table with an `OPEN` order → `409 TABLE_IN_USE`; delete an empty table → `204`; regenerate replaces the token (old token no longer resolves, new token resolves via `GET /api/qr/:qrToken`); `status` and `qrToken` stripped if sent; empty-PATCH body → `400`; RBAC 401/403. |
+| Integration | CRUD persists; tenant-scoped (admin A → restaurant B's table = `404 TABLE_NOT_FOUND`); delete a table with any order → `409 TABLE_IN_USE`; delete an empty table → `204`; regenerate replaces the token (old token no longer resolves, new token resolves via `GET /api/qr/:qrToken`); `status` and `qrToken` stripped if sent; empty-PATCH body → `400`; RBAC 401/403. |
 | E2E | Deferred — token resolves via the existing customer QR flow (`GET /api/qr/:qrToken`, US-005); regenerate invalidates the old token. |
 | Platform | n/a |
 | Release | n/a |

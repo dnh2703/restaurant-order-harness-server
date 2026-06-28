@@ -6,10 +6,10 @@ import { AppError, pgErrorCode } from '../../shared/errors'
 
 /**
  * Delete a table (US-017). Tenant-scoped existence check first → `TABLE_NOT_FOUND` (404) for a
- * missing/cross-tenant id. A table with an `OPEN` order is refused with `TABLE_IN_USE` (409): we
- * check first for a clean answer, and map the FK violation (SQLSTATE 23503 — `orders.table_id` is a
- * non-cascading FK) to the same code so a concurrent order insert between the check and the delete
- * stays safe under Neon's transaction pooling.
+ * missing/cross-tenant id. A table referenced by ANY order (any status) is refused with
+ * `TABLE_IN_USE` (409): we check first for a clean answer, and map the FK violation (SQLSTATE 23503
+ * — `orders.table_id` is a non-cascading FK) to the same code so a concurrent order insert between
+ * the check and the delete stays safe under Neon's transaction pooling.
  */
 export async function deleteTableUseCase(
   database: Database,
@@ -24,7 +24,7 @@ export async function deleteTableUseCase(
   const [open] = await database
     .select({ id: orders.id })
     .from(orders)
-    .where(and(eq(orders.tableId, id), eq(orders.status, 'OPEN')))
+    .where(eq(orders.tableId, id))
     .limit(1)
   if (open) throw new AppError('TABLE_IN_USE')
 

@@ -92,7 +92,7 @@ describe('tables use-cases', () => {
   )
 
   it(
-    'delete removes an empty table but refuses one with an OPEN order',
+    'delete removes an empty table but refuses one with any order (even historical PAID)',
     async () => {
       if (!schemaAvailable) return
       const empty = await createTableUseCase(db, restaurantId, { name: 'Removable' })
@@ -101,7 +101,7 @@ describe('tables use-cases', () => {
       expect(after.some((t) => t.id === empty.id)).toBe(false)
 
       const busy = await createTableUseCase(db, restaurantId, { name: 'Busy' })
-      await db.insert(orders).values({ restaurantId, tableId: busy.id })
+      await db.insert(orders).values({ restaurantId, tableId: busy.id, status: 'PAID' })
       await expect(deleteTableUseCase(db, restaurantId, busy.id)).rejects.toEqual(
         new AppError('TABLE_IN_USE'),
       )

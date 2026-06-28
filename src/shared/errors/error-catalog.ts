@@ -60,7 +60,7 @@ export const ERROR_CATALOG = {
   TABLE_NOT_FOUND: { status: 404, message: 'Table not found' },
   TABLE_IN_USE: {
     status: 409,
-    message: 'Cannot delete a table that has an open order',
+    message: 'Cannot delete a table referenced by an order',
   },
 
   // Tables & QR sessions (US-005)

@@ -35,7 +35,7 @@ All routes mounted under `/api/tables`, guarded by `authGuard` + `.guard({ auth:
 | GET | `/tables` | List the restaurant's tables, ordered by `name`. |
 | POST | `/tables` | `{ name, capacity? }` → `201`. Server mints `qrToken`; `status` defaults `EMPTY`. |
 | PATCH | `/tables/:id` | Partial patch `{ name?, capacity? }` (≥1 field). Not in tenant → `404 TABLE_NOT_FOUND`. |
-| DELETE | `/tables/:id` | `204`. Table with an `OPEN` order → `409 TABLE_IN_USE`. Not in tenant → `404 TABLE_NOT_FOUND`. |
+| DELETE | `/tables/:id` | `204`. Table referenced by any order → `409 TABLE_IN_USE`. Not in tenant → `404 TABLE_NOT_FOUND`. |
 | POST | `/tables/:id/regenerate-qr` | Mint a new `qrToken` (old QR stops resolving) → returns the table. Not in tenant → `404 TABLE_NOT_FOUND`. |
 
 ### Field rules
@@ -61,15 +61,14 @@ All routes mounted under `/api/tables`, guarded by `authGuard` + `.guard({ auth:
 
 ### Delete — in-use guard
 
-Mirrors US-015's `MENU_ITEM_IN_USE`. A table is **refused** while it still has an `OPEN` order:
+Mirrors US-015's `MENU_ITEM_IN_USE`. A table is **refused** while it is referenced by ANY order
+(any status, including historical PAID/CANCELLED):
 
 1. Tenant-scoped existence check first → `TABLE_NOT_FOUND` (404) for missing/cross-tenant.
-2. Count `orders WHERE table_id = :id AND status = 'OPEN'` → if any, `TABLE_IN_USE` (409).
+2. Count `orders WHERE table_id = :id` (any status) → if any, `TABLE_IN_USE` (409).
 3. Delete under the same tenant scope. `orders.table_id` is a non-cascading FK → `tables.id`, so a
    concurrent order insert between the count and the delete raises SQLSTATE `23503`; map it to the
    same `TABLE_IN_USE` (409) as a race-safe backstop under Neon transaction pooling.
-
-(At most one `OPEN` order per table is already enforced by the partial unique index, US-002.)
 
 ### Regenerate QR
 
@@ -88,7 +87,7 @@ Tenant-scoped `update` of `qr_token` to a fresh `crypto.randomUUID()`:
 | Code | Status | Notes |
 | --- | --- | --- |
 | `TABLE_NOT_FOUND` | **404 (new)** | Table missing or in another restaurant. |
-| `TABLE_IN_USE` | **409 (new)** | Table still has an `OPEN` order; delete refused. |
+| `TABLE_IN_USE` | **409 (new)** | Table is referenced by an order (any status); delete refused. |
 
 (`INVALID_TABLE` 404 already exists for the *customer* QR-resolve path and is unrelated — it stays.)
 
@@ -112,7 +111,7 @@ Tenant-scoped `update` of `qr_token` to a fresh `crypto.randomUUID()`:
 | Layer | Expected proof |
 | --- | --- |
 | Unit | `toTableView` maps a row; create mints a non-empty `qrToken` and `status='EMPTY'`; update patches only sent fields; regenerate yields a token different from the prior one. |
-| Integration | CRUD persists; tenant-scoped (admin A → restaurant B's table = `404 TABLE_NOT_FOUND`); delete a table with an `OPEN` order → `409 TABLE_IN_USE`; delete an empty table → `204`; regenerate replaces the token (old token no longer resolves, new token resolves via `GET /api/qr/:qrToken`); `status` ignored if sent; RBAC 401/403. |
+| Integration | CRUD persists; tenant-scoped (admin A → restaurant B's table = `404 TABLE_NOT_FOUND`); delete a table with any order → `409 TABLE_IN_USE`; delete an empty table → `204`; regenerate replaces the token (old token no longer resolves, new token resolves via `GET /api/qr/:qrToken`); `status` ignored if sent; RBAC 401/403. |
 | E2E | Deferred — covered indirectly: admin creates a table → its `qrToken` resolves through the existing customer QR flow (`GET /api/qr/:qrToken`, US-005); regenerate invalidates the old token. |
 | Platform | n/a |
 | Release | n/a |
