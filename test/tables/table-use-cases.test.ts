@@ -62,6 +62,14 @@ describe('tables use-cases', () => {
       await expect(
         updateTableUseCase(db, restaurantId, randomUUID(), { name: 'x' }),
       ).rejects.toEqual(new AppError('TABLE_NOT_FOUND'))
+
+      const untouched = await updateTableUseCase(db, restaurantId, created.id, {})
+      expect(untouched.name).toBe(patched.name)
+      expect(untouched.capacity).toBe(patched.capacity)
+
+      await expect(updateTableUseCase(db, restaurantId, randomUUID(), {})).rejects.toEqual(
+        new AppError('TABLE_NOT_FOUND'),
+      )
     },
     DB_TIMEOUT_MS,
   )
