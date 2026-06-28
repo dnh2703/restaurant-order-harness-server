@@ -24,6 +24,13 @@ export const ERROR_CATALOG = {
   NOT_FOUND: { status: 404, message: 'Resource not found' },
   INTERNAL_ERROR: { status: 500, message: 'Internal server error' },
 
+  // Auth & RBAC (US-009)
+  INVALID_CREDENTIALS: { status: 401, message: 'Email or password is incorrect' },
+  UNAUTHORIZED: { status: 401, message: 'Authentication required' },
+  TOKEN_REVOKED: { status: 401, message: 'Refresh token is no longer valid' },
+  TOKEN_EXPIRED: { status: 401, message: 'Refresh token has expired' },
+  FORBIDDEN: { status: 403, message: 'You do not have access to this resource' },
+
   // Tables & QR sessions (US-005)
   INVALID_TABLE: { status: 404, message: 'QR code does not resolve to a known table' },
 

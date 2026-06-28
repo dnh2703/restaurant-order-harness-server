@@ -39,7 +39,10 @@ authorization are hard gates; behavior changes require a decision record.
 
 - Look up the presented refresh token by hash; reject if missing, expired, or
   `revoked`. Return `401 TOKEN_REVOKED` / `TOKEN_EXPIRED`.
-- Optionally rotate the refresh token (revoke old, issue new) — decision deferred.
+- Rotate on every refresh: revoke the presented token and issue a new one with the new
+  access token (decision 0010).
+- Reuse detection: presenting an already-rotated (`revoked`) token signals theft → revoke
+  the user's whole refresh-token family and return `401 TOKEN_REVOKED`.
 
 ### Logout (US-8.3)
 
