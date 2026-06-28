@@ -20,7 +20,7 @@ Populated from `SPEC.md` via intake #1. Full decomposition:
 | E05 Realtime | US-008 customer order stream | sliced |
 | E06 Auth & RBAC | US-009 auth + guard, US-010 staff admin | sliced |
 | E07 Kitchen | US-011 queue + status, US-012 sold-out, US-013 staff stream | sliced |
-| E09 Admin CRUD | US-014 categories, US-015 menu-items, US-016 options, US-017 tables + QR | slicing (US-014 first) |
+| E09 Admin CRUD | US-014 categories, US-015 menu-items, US-016 options, US-017 tables + QR | slicing (US-014, US-015 done; US-016 next) |
 
 Story files: `docs/stories/epics/`. Durable rows: `harness-cli query matrix`.
 
