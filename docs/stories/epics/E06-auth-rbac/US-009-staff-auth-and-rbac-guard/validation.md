@@ -26,17 +26,42 @@ two restaurants to prove tenant isolation.
 
 ## Commands
 
-Add after the toolchain exists, e.g.:
-
 ```text
-bun test test/auth        # unit + integration
+bun test test/auth        # unit + integration (self-skips without a migrated DATABASE_URL)
+bun test                  # full suite
 ```
 
-Then register: `scripts/bin/harness-cli story update --id US-009 --verify "<test cmd>"`
-and set proof booleans, e.g.
-`scripts/bin/harness-cli story update --id US-009 --unit 1 --integration 1 --e2e 1 --platform 1`.
+Registered: `harness-cli story update --id US-009 --verify "bun test test/auth"
+--unit 1 --integration 1 --e2e 1 --platform 1`.
 
 ## Acceptance Evidence
 
-Add after verification: passing test output, a sample login response (tokens redacted),
-and proof that a revoked refresh token and a wrong-role request are rejected.
+Verified 2026-06-28 on the Neon test branch (`bun test`: **87 pass / 0 fail**, 21 files;
+`typecheck` / `oxlint` / `prettier --check` clean). `test/auth/` = 27 tests / 6 files.
+
+- **Unit** — `refresh-token` (opaque gen, deterministic SHA-256 hash, raw ≠ hash);
+  `access-token` (JWT round-trip; tampered, wrong-secret, and expired tokens rejected);
+  `password` (argon2id verify, wrong password fails); `auth-guard` (no/invalid token →
+  401 `UNAUTHORIZED`, wrong role → 403 `FORBIDDEN`, right role → 200 with identity).
+- **Integration (live Neon)** — login issues access + refresh and persists only the
+  refresh **hash** (raw ≠ stored); wrong password / unknown email / inactive user all →
+  401 `INVALID_CREDENTIALS`; `GET /me` requires a valid access token; refresh rotates
+  (old token rejected, new accepted); replaying a rotated token → 401 `TOKEN_REVOKED` and
+  the whole family is revoked; expired refresh → 401 `TOKEN_EXPIRED`; logout → 204 and is
+  idempotent, after which the token can no longer refresh.
+- **E2E / authorization** — the guard, driven end-to-end through `app.handle`, lets the
+  correct role reach a role-restricted route and blocks a wrong role (403) and an
+  unauthenticated request (401).
+- **Platform** — all DB-backed proofs run against a migrated Neon branch with cold-start
+  warm-up; access-token expiry honored.
+
+Sample login response (tokens redacted):
+
+```json
+{ "data": { "accessToken": "<jwt>", "refreshToken": "<opaque>",
+  "user": { "id": "…", "email": "admin@…", "name": "Admin", "role": "ADMIN",
+            "restaurantId": "…" } } }
+```
+
+Rotation policy recorded in decision
+[0010](../../../../decisions/0010-refresh-token-rotation.md).

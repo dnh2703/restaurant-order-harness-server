@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 
 import { errorHandler } from './plugins/error-handler'
 import { openapiPlugin } from './plugins/openapi'
+import { authRoutes } from './routes/auth'
 import { healthRoutes } from './routes/health'
 import { qrRoutes } from './routes/qr'
 import { streamRoutes } from './routes/stream'
@@ -15,6 +16,7 @@ export const app = new Elysia({ prefix: '/api' })
   .use(errorHandler)
   .use(openapiPlugin)
   .use(healthRoutes)
+  .use(authRoutes)
   .use(qrRoutes)
   .use(streamRoutes)
 
