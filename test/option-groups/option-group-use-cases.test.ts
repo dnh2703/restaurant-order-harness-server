@@ -4,7 +4,9 @@ import { eq, inArray } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
 import { createOptionGroupUseCase } from '../../src/application/option-groups/create-option-group'
+import { deleteOptionGroupUseCase } from '../../src/application/option-groups/delete-option-group'
 import { listOptionGroupsUseCase } from '../../src/application/option-groups/list-option-groups'
+import { updateOptionGroupUseCase } from '../../src/application/option-groups/update-option-group'
 import { db } from '../../src/infrastructure/database/client'
 import { categories, menuItems, restaurants } from '../../src/infrastructure/database/schema'
 import { DB_TIMEOUT_MS, probeMigratedDb, WARMUP_TIMEOUT_MS } from '../support/db'
@@ -136,6 +138,66 @@ describe('listOptionGroupsUseCase', () => {
       await db.delete(menuItems).where(eq(menuItems.id, foreignItem!.id))
       await db.delete(categories).where(eq(categories.id, c2!.id))
       await db.delete(restaurants).where(eq(restaurants.id, r2!.id))
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
+describe('updateOptionGroupUseCase', () => {
+  it(
+    'patches only the fields provided',
+    async () => {
+      if (!schemaAvailable) return
+      const group = await createOptionGroupUseCase(db, restaurantId, menuItemId, {
+        name: 'Spice',
+        type: 'SINGLE',
+        isRequired: false,
+      })
+      const updated = await updateOptionGroupUseCase(db, restaurantId, menuItemId, group.id, {
+        isRequired: true,
+      })
+      expect(updated.isRequired).toBe(true)
+      expect(updated.name).toBe('Spice')
+      expect(updated.type).toBe('SINGLE')
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws OPTION_GROUP_NOT_FOUND for a group not under the named item',
+    async () => {
+      if (!schemaAvailable) return
+      await expect(
+        updateOptionGroupUseCase(db, restaurantId, menuItemId, randomUUID(), { name: 'X' }),
+      ).rejects.toMatchObject({ code: 'OPTION_GROUP_NOT_FOUND' })
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
+describe('deleteOptionGroupUseCase', () => {
+  it(
+    'deletes a group',
+    async () => {
+      if (!schemaAvailable) return
+      const group = await createOptionGroupUseCase(db, restaurantId, menuItemId, {
+        name: 'ToDelete',
+        type: 'MULTI',
+      })
+      await deleteOptionGroupUseCase(db, restaurantId, menuItemId, group.id)
+      const groups = await listOptionGroupsUseCase(db, restaurantId, menuItemId)
+      expect(groups.some((g) => g.id === group.id)).toBe(false)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws OPTION_GROUP_NOT_FOUND for a missing group',
+    async () => {
+      if (!schemaAvailable) return
+      await expect(
+        deleteOptionGroupUseCase(db, restaurantId, menuItemId, randomUUID()),
+      ).rejects.toMatchObject({ code: 'OPTION_GROUP_NOT_FOUND' })
     },
     DB_TIMEOUT_MS,
   )
