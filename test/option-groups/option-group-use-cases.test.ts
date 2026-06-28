@@ -7,6 +7,9 @@ import { createOptionGroupUseCase } from '../../src/application/option-groups/cr
 import { deleteOptionGroupUseCase } from '../../src/application/option-groups/delete-option-group'
 import { listOptionGroupsUseCase } from '../../src/application/option-groups/list-option-groups'
 import { updateOptionGroupUseCase } from '../../src/application/option-groups/update-option-group'
+import { createOptionUseCase } from '../../src/application/option-groups/create-option'
+import { deleteOptionUseCase } from '../../src/application/option-groups/delete-option'
+import { updateOptionUseCase } from '../../src/application/option-groups/update-option'
 import { db } from '../../src/infrastructure/database/client'
 import { categories, menuItems, restaurants } from '../../src/infrastructure/database/schema'
 import { DB_TIMEOUT_MS, probeMigratedDb, WARMUP_TIMEOUT_MS } from '../support/db'
@@ -198,6 +201,104 @@ describe('deleteOptionGroupUseCase', () => {
       await expect(
         deleteOptionGroupUseCase(db, restaurantId, menuItemId, randomUUID()),
       ).rejects.toMatchObject({ code: 'OPTION_GROUP_NOT_FOUND' })
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
+describe('option CRUD use-cases', () => {
+  it(
+    'creates an option (priceDelta defaults to 0) and surfaces it in the group listing',
+    async () => {
+      if (!schemaAvailable) return
+      const group = await createOptionGroupUseCase(db, restaurantId, menuItemId, {
+        name: 'Extras',
+        type: 'MULTI',
+      })
+      const created = await createOptionUseCase(db, restaurantId, menuItemId, group.id, {
+        name: 'Egg',
+      })
+      expect(created.name).toBe('Egg')
+      expect(created.priceDelta).toBe(0)
+      expect(created.optionGroupId).toBe(group.id)
+
+      const groups = await listOptionGroupsUseCase(db, restaurantId, menuItemId)
+      const listed = groups.find((g) => g.id === group.id)
+      expect(listed!.options.some((o) => o.id === created.id)).toBe(true)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'persists a negative priceDelta and patches only the fields provided',
+    async () => {
+      if (!schemaAvailable) return
+      const group = await createOptionGroupUseCase(db, restaurantId, menuItemId, {
+        name: 'Sizing',
+        type: 'SINGLE',
+      })
+      const created = await createOptionUseCase(db, restaurantId, menuItemId, group.id, {
+        name: 'Small',
+        priceDelta: -5000,
+      })
+      expect(created.priceDelta).toBe(-5000)
+      const updated = await updateOptionUseCase(
+        db,
+        restaurantId,
+        menuItemId,
+        group.id,
+        created.id,
+        {
+          name: 'Tiny',
+        },
+      )
+      expect(updated.name).toBe('Tiny')
+      expect(updated.priceDelta).toBe(-5000)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'deletes an option',
+    async () => {
+      if (!schemaAvailable) return
+      const group = await createOptionGroupUseCase(db, restaurantId, menuItemId, {
+        name: 'Removable',
+        type: 'MULTI',
+      })
+      const created = await createOptionUseCase(db, restaurantId, menuItemId, group.id, {
+        name: 'Gone',
+      })
+      await deleteOptionUseCase(db, restaurantId, menuItemId, group.id, created.id)
+      const groups = await listOptionGroupsUseCase(db, restaurantId, menuItemId)
+      const listed = groups.find((g) => g.id === group.id)
+      expect(listed!.options.some((o) => o.id === created.id)).toBe(false)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws OPTION_GROUP_NOT_FOUND creating an option under a missing group',
+    async () => {
+      if (!schemaAvailable) return
+      await expect(
+        createOptionUseCase(db, restaurantId, menuItemId, randomUUID(), { name: 'Orphan' }),
+      ).rejects.toMatchObject({ code: 'OPTION_GROUP_NOT_FOUND' })
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'throws OPTION_NOT_FOUND updating a missing option in a real group',
+    async () => {
+      if (!schemaAvailable) return
+      const group = await createOptionGroupUseCase(db, restaurantId, menuItemId, {
+        name: 'Real',
+        type: 'SINGLE',
+      })
+      await expect(
+        updateOptionUseCase(db, restaurantId, menuItemId, group.id, randomUUID(), { name: 'X' }),
+      ).rejects.toMatchObject({ code: 'OPTION_NOT_FOUND' })
     },
     DB_TIMEOUT_MS,
   )
