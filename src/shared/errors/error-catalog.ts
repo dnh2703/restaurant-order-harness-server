@@ -81,6 +81,9 @@ export const ERROR_CATALOG = {
   ORDER_NOT_OPEN: { status: 409, message: 'Order is not open' },
   INVALID_DISCOUNT: { status: 422, message: 'Discount value is out of range' },
 
+  // Reports (US-019)
+  INVALID_DATE_RANGE: { status: 422, message: 'Date range is invalid' },
+
   // Infrastructure
   DB_UNAVAILABLE: { status: 503, message: 'Database connectivity check failed' },
 } as const satisfies Record<string, ErrorDefinition>
