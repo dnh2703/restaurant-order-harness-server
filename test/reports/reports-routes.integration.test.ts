@@ -186,6 +186,98 @@ async function seedPaidOrder(opts: {
   return { orderId: order!.id }
 }
 
+describe('reports top-dishes', () => {
+  it(
+    'ranks dishes by quantity (tiebreak revenue), honoring limit and excluding cancelled lines',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminAEmail)
+      const day = new Date('2026-05-05T05:00:00Z') // 2026-05-05 local
+      // Phở bò: 3 + 4 = 7 sold. Cà phê: 5 sold. Trà đá: 2 sold. Bún: cancelled (excluded).
+      await seedPaidOrder({
+        paidAt: day,
+        unitPrice: 70000,
+        quantity: 3,
+        amount: 210000,
+        nameSnapshot: 'Phở bò',
+      })
+      await seedPaidOrder({
+        paidAt: day,
+        unitPrice: 70000,
+        quantity: 4,
+        amount: 280000,
+        nameSnapshot: 'Phở bò',
+      })
+      await seedPaidOrder({
+        paidAt: day,
+        unitPrice: 25000,
+        quantity: 5,
+        amount: 125000,
+        nameSnapshot: 'Cà phê',
+      })
+      await seedPaidOrder({
+        paidAt: day,
+        unitPrice: 10000,
+        quantity: 2,
+        amount: 20000,
+        nameSnapshot: 'Trà đá',
+      })
+      await seedPaidOrder({
+        paidAt: day,
+        unitPrice: 99000,
+        quantity: 9,
+        amount: 0,
+        itemStatus: 'CANCELLED',
+        nameSnapshot: 'Bún',
+      })
+
+      const res = await req('/reports/top-dishes?from=2026-05-05&to=2026-05-05&limit=2', { token })
+      expect(res.status).toBe(200)
+      const { data } = (await res.json()) as {
+        data: { dishes: { name: string; quantitySold: number; revenue: number }[] }
+      }
+      expect(data.dishes).toHaveLength(2)
+      expect(data.dishes[0]).toMatchObject({ name: 'Phở bò', quantitySold: 7, revenue: 490000 })
+      expect(data.dishes[1]).toMatchObject({ name: 'Cà phê', quantitySold: 5, revenue: 125000 })
+      // 'Bún' (cancelled) and 'Trà đá' (rank 3, beyond limit) are absent.
+      expect(data.dishes.some((d) => d.name === 'Bún')).toBe(false)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'defaults limit to 10 and isolates by tenant',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminAEmail)
+      const day = new Date('2026-05-20T05:00:00Z')
+      await seedPaidOrder({
+        paidAt: day,
+        unitPrice: 30000,
+        quantity: 6,
+        amount: 180000,
+        nameSnapshot: 'Mì Quảng',
+      })
+      // Cross-tenant dish must not appear for admin A.
+      await seedPaidOrder({
+        restaurantId: restaurantBId,
+        paidAt: day,
+        unitPrice: 30000,
+        quantity: 99,
+        amount: 2970000,
+        nameSnapshot: 'B-only',
+      })
+
+      const res = await req('/reports/top-dishes?from=2026-05-20&to=2026-05-20', { token })
+      expect(res.status).toBe(200)
+      const { data } = (await res.json()) as { data: { dishes: { name: string }[] } }
+      expect(data.dishes.some((d) => d.name === 'Mì Quảng')).toBe(true)
+      expect(data.dishes.some((d) => d.name === 'B-only')).toBe(false)
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
 describe('reports revenue', () => {
   it(
     'sums payments.amount per local day with a range summary, excluding open/cross-tenant',
@@ -221,15 +313,13 @@ describe('reports revenue', () => {
           status: 'OCCUPIED',
         })
         .returning({ id: tables.id })
-      await db
-        .insert(orders)
-        .values({
-          restaurantId: restaurantAId,
-          tableId: openTable!.id,
-          status: 'OPEN',
-          subtotal: 999000,
-          total: 999000,
-        })
+      await db.insert(orders).values({
+        restaurantId: restaurantAId,
+        tableId: openTable!.id,
+        status: 'OPEN',
+        subtotal: 999000,
+        total: 999000,
+      })
       // A cross-tenant payment (restaurant B) must NOT count.
       await seedPaidOrder({
         restaurantId: restaurantBId,

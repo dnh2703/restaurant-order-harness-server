@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia'
 
 import { parseReportRange } from '../../../application/reports/date-range'
 import { getRevenueByDay } from '../../../application/reports/revenue-by-day'
+import { getTopDishes } from '../../../application/reports/top-dishes'
 import { db } from '../../../infrastructure/database/client'
 import { authGuard } from '../plugins/auth-guard'
 
@@ -28,5 +29,21 @@ export const reportsRoutes = new Elysia({ prefix: '/reports' })
         to: t.String({ pattern: DATE_PATTERN }),
       }),
       detail: { tags: ['Reports'], summary: 'Daily revenue over a date range' },
+    },
+  )
+  .get(
+    '/top-dishes',
+    async ({ auth, query }) => {
+      const range = parseReportRange({ from: query.from, to: query.to })
+      const dishes = await getTopDishes(db, auth.restaurantId, range, query.limit ?? 10)
+      return { data: { dishes } }
+    },
+    {
+      query: t.Object({
+        from: t.String({ pattern: DATE_PATTERN }),
+        to: t.String({ pattern: DATE_PATTERN }),
+        limit: t.Optional(t.Integer({ minimum: 1, maximum: 50 })),
+      }),
+      detail: { tags: ['Reports'], summary: 'Top-selling dishes over a date range' },
     },
   )
