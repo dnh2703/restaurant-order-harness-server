@@ -43,6 +43,7 @@ export async function getRevenueByDay(
         sql`${localDay} BETWEEN ${range.from}::date AND ${range.to}::date`,
       ),
     )
+    // Positional alias: Drizzle re-parameterizes a reused sql fragment, so grouping by the day expression directly trips Postgres 42803 — GROUP BY the first select column (the day) instead.
     .groupBy(sql`1`)
     .orderBy(sql`1`)
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, ne, sql } from 'drizzle-orm'
 
 import type { Database } from '../../infrastructure/database/client'
 import { orderItems, orders, payments } from '../../infrastructure/database/schema'
@@ -40,7 +40,7 @@ export async function getTopDishes(
     .where(
       and(
         eq(orders.restaurantId, restaurantId),
-        sql`${orderItems.status} <> 'CANCELLED'`,
+        ne(orderItems.status, 'CANCELLED'),
         sql`(${payments.paidAt} AT TIME ZONE ${APP_TZ})::date BETWEEN ${range.from}::date AND ${range.to}::date`,
       ),
     )

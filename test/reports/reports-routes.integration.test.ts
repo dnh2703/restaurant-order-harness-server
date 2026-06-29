@@ -141,20 +141,24 @@ async function seedPaidOrder(opts: {
   amount: number
   itemStatus?: 'SERVED' | 'CANCELLED'
   nameSnapshot?: string
+  menuItemId?: string
 }) {
   const rid = opts.restaurantId ?? restaurantAId
   const name = opts.nameSnapshot ?? 'Phở bò'
-  // Same dish name → same menu_item_id (real orders of a dish share one menu item). This is
-  // what lets top-dishes' group-by-menu_item_id aggregate repeat orders into one ranked row.
-  let menuItemId = menuItemIdByName.get(name)
+  // An explicit menuItemId lets a test attach a different name_snapshot to the SAME dish
+  // (simulating a rename). Otherwise, the same dish name reuses one menu item.
+  let menuItemId = opts.menuItemId
   if (menuItemId === undefined) {
-    const [mi] = await db
-      .insert(menuItems)
-      .values({ categoryId: categoryAId, name, price: opts.unitPrice })
-      .returning({ id: menuItems.id })
-    menuItemId = mi!.id
-    createdMenuItemIds.push(menuItemId)
-    menuItemIdByName.set(name, menuItemId)
+    menuItemId = menuItemIdByName.get(name)
+    if (menuItemId === undefined) {
+      const [mi] = await db
+        .insert(menuItems)
+        .values({ categoryId: categoryAId, name, price: opts.unitPrice })
+        .returning({ id: menuItems.id })
+      menuItemId = mi!.id
+      createdMenuItemIds.push(menuItemId)
+      menuItemIdByName.set(name, menuItemId)
+    }
   }
   const [table] = await db
     .insert(tables)
@@ -191,7 +195,7 @@ async function seedPaidOrder(opts: {
     cashierId: cashierAId,
     paidAt: opts.paidAt,
   })
-  return { orderId: order!.id }
+  return { orderId: order!.id, menuItemId }
 }
 
 describe('reports top-dishes', () => {
@@ -281,6 +285,41 @@ describe('reports top-dishes', () => {
       const { data } = (await res.json()) as { data: { dishes: { name: string }[] } }
       expect(data.dishes.some((d) => d.name === 'Mì Quảng')).toBe(true)
       expect(data.dishes.some((d) => d.name === 'B-only')).toBe(false)
+      expect(data.dishes.length).toBeLessThanOrEqual(10)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'rolls up orders sharing a menu_item_id under the latest name_snapshot, not by name',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminAEmail)
+      // Same dish (same menu_item_id), renamed between two orders on distinct days.
+      const first = await seedPaidOrder({
+        paidAt: new Date('2026-07-01T05:00:00Z'),
+        unitPrice: 40000,
+        quantity: 2,
+        amount: 80000,
+        nameSnapshot: 'Old Name',
+      })
+      await seedPaidOrder({
+        paidAt: new Date('2026-07-02T05:00:00Z'),
+        unitPrice: 40000,
+        quantity: 3,
+        amount: 120000,
+        nameSnapshot: 'New Name',
+        menuItemId: first.menuItemId,
+      })
+      const res = await req('/reports/top-dishes?from=2026-07-01&to=2026-07-02', { token })
+      expect(res.status).toBe(200)
+      const { data } = (await res.json()) as {
+        data: { dishes: { menuItemId: string; name: string; quantitySold: number }[] }
+      }
+      const rows = data.dishes.filter((d) => d.menuItemId === first.menuItemId)
+      expect(rows).toHaveLength(1) // grouped by menu_item_id → one row (name-grouping would yield two)
+      expect(rows[0]!.name).toBe('New Name') // latest name_snapshot wins
+      expect(rows[0]!.quantitySold).toBe(5) // 2 + 3 combined across the rename
     },
     DB_TIMEOUT_MS,
   )
