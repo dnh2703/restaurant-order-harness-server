@@ -152,6 +152,64 @@ async function seedOpenOrder(opts: { subtotal: number; unitPrice: number; quanti
   return { tableId: table!.id, tableName: table!.name, orderId: order!.id }
 }
 
+describe('cashier discount', () => {
+  it(
+    'applies a PERCENT discount and recomputes the total',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(cashierAEmail)
+      const seeded = await seedOpenOrder({ subtotal: 100000, unitPrice: 100000, quantity: 1 })
+      const res = await req(`/cashier/orders/${seeded.orderId}/discount`, {
+        method: 'PATCH',
+        token,
+        body: { type: 'PERCENT', value: 10, reason: 'regular' },
+      })
+      expect(res.status).toBe(200)
+      const { data } = (await res.json()) as {
+        data: { order: { discountAmount: number; total: number } }
+      }
+      expect(data.order.discountAmount).toBe(10000)
+      expect(data.order.total).toBe(90000)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'rejects a percent over 100 with 422 INVALID_DISCOUNT',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(cashierAEmail)
+      const seeded = await seedOpenOrder({ subtotal: 100000, unitPrice: 100000, quantity: 1 })
+      const res = await req(`/cashier/orders/${seeded.orderId}/discount`, {
+        method: 'PATCH',
+        token,
+        body: { type: 'PERCENT', value: 150 },
+      })
+      expect(res.status).toBe(422)
+      expect(await errorCode(res)).toBe('INVALID_DISCOUNT')
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'refuses a discount on a non-OPEN order with 409 ORDER_NOT_OPEN',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(cashierAEmail)
+      const seeded = await seedOpenOrder({ subtotal: 100000, unitPrice: 100000, quantity: 1 })
+      await db.update(orders).set({ status: 'PAID' }).where(eq(orders.id, seeded.orderId))
+      const res = await req(`/cashier/orders/${seeded.orderId}/discount`, {
+        method: 'PATCH',
+        token,
+        body: { type: 'FIXED', value: 5000 },
+      })
+      expect(res.status).toBe(409)
+      expect(await errorCode(res)).toBe('ORDER_NOT_OPEN')
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
 describe('cashier read surface', () => {
   it(
     'rejects a missing token (401) and a non-staff path is guarded',

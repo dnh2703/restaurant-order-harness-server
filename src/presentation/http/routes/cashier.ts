@@ -1,5 +1,6 @@
 import { Elysia, t } from 'elysia'
 
+import { applyDiscount } from '../../../application/cashier/apply-discount'
 import { getBill } from '../../../application/cashier/get-bill'
 import { listOpenTables } from '../../../application/cashier/list-open-tables'
 import { db } from '../../../infrastructure/database/client'
@@ -45,5 +46,21 @@ export const cashierRoutes = new Elysia({ prefix: '/cashier' })
     {
       params: idParams,
       detail: { tags: ['Cashier'], summary: 'Bill detail for one order' },
+    },
+  )
+  .patch(
+    '/orders/:id/discount',
+    async ({ auth, params, body }) => {
+      const order = await applyDiscount(db, auth.restaurantId, params.id, body)
+      return { data: { order } }
+    },
+    {
+      params: idParams,
+      body: t.Object({
+        type: t.Union([t.Literal('PERCENT'), t.Literal('FIXED')]),
+        value: t.Integer({ minimum: 0 }),
+        reason: t.Optional(t.String()),
+      }),
+      detail: { tags: ['Cashier'], summary: 'Apply a discount (PERCENT or FIXED)' },
     },
   )

@@ -78,6 +78,8 @@ export const ERROR_CATALOG = {
 
   // Cashier & payment (US-018)
   ORDER_NOT_FOUND: { status: 404, message: 'Order not found' },
+  ORDER_NOT_OPEN: { status: 409, message: 'Order is not open' },
+  INVALID_DISCOUNT: { status: 422, message: 'Discount value is out of range' },
 
   // Infrastructure
   DB_UNAVAILABLE: { status: 503, message: 'Database connectivity check failed' },
