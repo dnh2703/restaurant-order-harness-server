@@ -1,6 +1,7 @@
 import { Elysia, t } from 'elysia'
 
 import { applyDiscount } from '../../../application/cashier/apply-discount'
+import { checkoutOrder } from '../../../application/cashier/checkout-order'
 import { getBill } from '../../../application/cashier/get-bill'
 import { listOpenTables } from '../../../application/cashier/list-open-tables'
 import { db } from '../../../infrastructure/database/client'
@@ -62,5 +63,19 @@ export const cashierRoutes = new Elysia({ prefix: '/cashier' })
         reason: t.Optional(t.String()),
       }),
       detail: { tags: ['Cashier'], summary: 'Apply a discount (PERCENT or FIXED)' },
+    },
+  )
+  .post(
+    '/orders/:id/payment',
+    async ({ auth, params, body }) => {
+      const result = await checkoutOrder(db, auth.restaurantId, params.id, body, auth.userId)
+      return { data: result }
+    },
+    {
+      params: idParams,
+      body: t.Object({
+        method: t.Union([t.Literal('CASH'), t.Literal('TRANSFER'), t.Literal('CARD')]),
+      }),
+      detail: { tags: ['Cashier'], summary: 'Finalize payment and close the table session' },
     },
   )

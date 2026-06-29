@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 
 import { hashPassword } from '../../src/infrastructure/auth/password'
@@ -10,6 +10,7 @@ import {
   menuItems,
   orderItems,
   orders,
+  payments,
   restaurants,
   tables,
   users,
@@ -79,7 +80,16 @@ beforeAll(async () => {
 afterAll(async () => {
   if (!schemaAvailable) return
   for (const rid of [restaurantAId, restaurantBId].filter(Boolean)) {
-    // 1. orders first — cascades order_items (order_items.menuItemId FK has no cascade, but
+    // 0. payments first — payments.order_id is a non-cascading FK → orders.id
+    await db
+      .delete(payments)
+      .where(
+        inArray(
+          payments.orderId,
+          db.select({ id: orders.id }).from(orders).where(eq(orders.restaurantId, rid)),
+        ),
+      )
+    // 1. orders next — cascades order_items (order_items.menuItemId FK has no cascade, but
     //    order_items rows are deleted via orders cascade before we touch menu_items below)
     await db.delete(orders).where(eq(orders.restaurantId, rid))
     await db.delete(tables).where(eq(tables.restaurantId, rid))
@@ -257,6 +267,81 @@ describe('cashier read surface', () => {
       const cross = await req(`/cashier/orders/${seeded.orderId}`, { token: bToken })
       expect(cross.status).toBe(404)
       expect(await errorCode(cross)).toBe('ORDER_NOT_FOUND')
+    },
+    DB_TIMEOUT_MS,
+  )
+})
+
+describe('cashier checkout', () => {
+  it(
+    'finalizes payment: order PAID, payment.amount = total, table freed to EMPTY',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(cashierAEmail)
+      const seeded = await seedOpenOrder({ subtotal: 80000, unitPrice: 80000, quantity: 1 })
+      const res = await req(`/cashier/orders/${seeded.orderId}/payment`, {
+        method: 'POST',
+        token,
+        body: { method: 'CASH' },
+      })
+      expect(res.status).toBe(200)
+      const { data } = (await res.json()) as {
+        data: { payment: { amount: number }; order: { status: string } }
+      }
+      expect(data.payment.amount).toBe(80000)
+      expect(data.order.status).toBe('PAID')
+
+      const [tableRow] = await db
+        .select({ status: tables.status })
+        .from(tables)
+        .where(eq(tables.id, seeded.tableId))
+      expect(tableRow!.status).toBe('EMPTY')
+
+      const paid = await db.select().from(payments).where(eq(payments.orderId, seeded.orderId))
+      expect(paid.length).toBe(1)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'a second checkout is refused (409 ORDER_NOT_OPEN) and creates no second payment',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(cashierAEmail)
+      const seeded = await seedOpenOrder({ subtotal: 40000, unitPrice: 40000, quantity: 1 })
+      const first = await req(`/cashier/orders/${seeded.orderId}/payment`, {
+        method: 'POST',
+        token,
+        body: { method: 'CARD' },
+      })
+      expect(first.status).toBe(200)
+      const second = await req(`/cashier/orders/${seeded.orderId}/payment`, {
+        method: 'POST',
+        token,
+        body: { method: 'CARD' },
+      })
+      expect(second.status).toBe(409)
+      expect(await errorCode(second)).toBe('ORDER_NOT_OPEN')
+
+      const paid = await db.select().from(payments).where(eq(payments.orderId, seeded.orderId))
+      expect(paid.length).toBe(1)
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'cannot check out another restaurant order — 404 ORDER_NOT_FOUND',
+    async () => {
+      if (!schemaAvailable) return
+      const seeded = await seedOpenOrder({ subtotal: 40000, unitPrice: 40000, quantity: 1 })
+      const bToken = await tokenFor(cashierBEmail)
+      const res = await req(`/cashier/orders/${seeded.orderId}/payment`, {
+        method: 'POST',
+        token: bToken,
+        body: { method: 'CASH' },
+      })
+      expect(res.status).toBe(404)
+      expect(await errorCode(res)).toBe('ORDER_NOT_FOUND')
     },
     DB_TIMEOUT_MS,
   )
