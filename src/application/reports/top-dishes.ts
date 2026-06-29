@@ -14,8 +14,8 @@ export interface TopDish {
 
 /**
  * Dishes ranked by quantity sold (tiebreak revenue desc) from non-CANCELLED order_items of
- * PAID orders in an inclusive local-date range. Grouped by name_snapshot so all items sharing
- * the same dish name aggregate together. `menuItemId` is the most-recently-created item id.
+ * PAID orders in an inclusive local-date range. Grouped by menu_item_id (stable identity across
+ * renames); name is the latest name_snapshot.
  * revenue = Σ(quantity × unit_price) — option deltas excluded. One query.
  */
 export async function getTopDishes(
@@ -29,8 +29,8 @@ export async function getTopDishes(
 
   const rows = await database
     .select({
-      menuItemId: sql<string>`(array_agg(${orderItems.menuItemId} ORDER BY ${orderItems.createdAt} DESC))[1]`,
-      name: orderItems.nameSnapshot,
+      menuItemId: orderItems.menuItemId,
+      name: sql<string>`(array_agg(${orderItems.nameSnapshot} ORDER BY ${orderItems.createdAt} DESC))[1]`,
       quantitySold,
       revenue,
     })
@@ -44,7 +44,7 @@ export async function getTopDishes(
         sql`(${payments.paidAt} AT TIME ZONE ${APP_TZ})::date BETWEEN ${range.from}::date AND ${range.to}::date`,
       ),
     )
-    .groupBy(orderItems.nameSnapshot)
+    .groupBy(orderItems.menuItemId)
     .orderBy(desc(quantitySold), desc(revenue))
     .limit(limit)
 

@@ -28,9 +28,9 @@ let restaurantAId = ''
 let restaurantBId = ''
 let categoryAId = ''
 let cashierAId = ''
-// Each seedPaidOrder() creates a distinct menu_items row (so top-dishes can group by
-// menu_item_id); track them for FK-safe teardown.
+// Track created menu_items rows for FK-safe teardown.
 const createdMenuItemIds: string[] = []
+const menuItemIdByName = new Map<string, string>()
 
 beforeAll(async () => {
   schemaAvailable = await probeMigratedDb()
@@ -126,10 +126,11 @@ function req(path: string, init: { method?: string; token?: string } = {}): Prom
 }
 
 /**
- * Seed a PAID order: a distinct menu item (so top-dishes can group by menu_item_id), a table,
- * a PAID order, one priced item, and a payment at `paidAt`. Returns the order id.
- * `restaurantId` defaults to A. The menu item is created under restaurant A's category in all
- * cases — top-dishes scopes by `orders.restaurant_id` (the orders join), not the item's
+ * Seed a PAID order: a table, a PAID order, one priced item, and a payment at `paidAt`.
+ * Returns the order id. `restaurantId` defaults to A. The menu item is looked up by name so
+ * repeat orders of the same dish share one menu_item_id — matching how top-dishes'
+ * group-by-menu_item_id aggregates them. The menu item is created under restaurant A's category
+ * in all cases — top-dishes scopes by `orders.restaurant_id` (the orders join), not the item's
  * category, so a restaurant-B order referencing an A-owned item is still isolated correctly.
  */
 async function seedPaidOrder(opts: {
@@ -143,11 +144,18 @@ async function seedPaidOrder(opts: {
 }) {
   const rid = opts.restaurantId ?? restaurantAId
   const name = opts.nameSnapshot ?? 'Phở bò'
-  const [mi] = await db
-    .insert(menuItems)
-    .values({ categoryId: categoryAId, name, price: opts.unitPrice })
-    .returning({ id: menuItems.id })
-  createdMenuItemIds.push(mi!.id)
+  // Same dish name → same menu_item_id (real orders of a dish share one menu item). This is
+  // what lets top-dishes' group-by-menu_item_id aggregate repeat orders into one ranked row.
+  let menuItemId = menuItemIdByName.get(name)
+  if (menuItemId === undefined) {
+    const [mi] = await db
+      .insert(menuItems)
+      .values({ categoryId: categoryAId, name, price: opts.unitPrice })
+      .returning({ id: menuItems.id })
+    menuItemId = mi!.id
+    createdMenuItemIds.push(menuItemId)
+    menuItemIdByName.set(name, menuItemId)
+  }
   const [table] = await db
     .insert(tables)
     .values({
@@ -170,7 +178,7 @@ async function seedPaidOrder(opts: {
     .returning({ id: orders.id })
   await db.insert(orderItems).values({
     orderId: order!.id,
-    menuItemId: mi!.id,
+    menuItemId,
     nameSnapshot: name,
     unitPrice: opts.unitPrice,
     quantity: opts.quantity,
