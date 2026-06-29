@@ -3,6 +3,7 @@ import { Elysia } from 'elysia'
 import { errorHandler } from './plugins/error-handler'
 import { openapiPlugin } from './plugins/openapi'
 import { authRoutes } from './routes/auth'
+import { cashierRoutes } from './routes/cashier'
 import { categoriesRoutes } from './routes/categories'
 import { healthRoutes } from './routes/health'
 import { kitchenRoutes } from './routes/kitchen'
@@ -23,6 +24,7 @@ export const app = new Elysia({ prefix: '/api' })
   .use(openapiPlugin)
   .use(healthRoutes)
   .use(authRoutes)
+  .use(cashierRoutes)
   .use(staffRoutes)
   .use(categoriesRoutes)
   .use(menuItemsRoutes)

@@ -76,6 +76,11 @@ export const ERROR_CATALOG = {
   MISSING_REQUIRED_OPTION: { status: 422, message: 'A required option group requires a selection' },
   INVALID_OPTION: { status: 422, message: 'Selected option is not valid for this menu item' },
 
+  // Cashier & payment (US-018)
+  ORDER_NOT_FOUND: { status: 404, message: 'Order not found' },
+  ORDER_NOT_OPEN: { status: 409, message: 'Order is not open' },
+  INVALID_DISCOUNT: { status: 422, message: 'Discount value is out of range' },
+
   // Infrastructure
   DB_UNAVAILABLE: { status: 503, message: 'Database connectivity check failed' },
 } as const satisfies Record<string, ErrorDefinition>
