@@ -209,11 +209,15 @@ export const orderItems = pgTable(
     note: text(),
     status: orderItemStatus().notNull().default('PENDING'),
     createdAt: createdAt(),
+    // Stamped (DB now()) the moment the kitchen advances the item to SERVED; null until then.
+    servedAt: timestamp({ withTimezone: true }),
   },
   (t) => [
     index('order_items_order_status_idx').on(t.orderId, t.status),
     // Kitchen queue: pending/cooking items ordered by arrival.
     index('order_items_queue_idx').on(t.status, t.createdAt),
+    // Recently-served lookup: SERVED items ordered by serve time.
+    index('order_items_served_recent_idx').on(t.status, t.servedAt),
   ],
 )
 

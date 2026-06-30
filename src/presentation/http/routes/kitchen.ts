@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia'
 
 import { advanceItemStatus } from '../../../application/kitchen/advance-item-status'
 import { getKitchenQueue } from '../../../application/kitchen/get-queue'
+import { getServedRecent } from '../../../application/kitchen/get-served-recent'
 import { setMenuItemAvailability } from '../../../application/kitchen/set-item-availability'
 import { db } from '../../../infrastructure/database/client'
 import { authGuard } from '../plugins/auth-guard'
@@ -16,6 +17,17 @@ const queueItem = t.Object({
   note: t.Union([t.String(), t.Null()]),
   status: t.Union([t.Literal('PENDING'), t.Literal('COOKING')]),
   createdAt: t.String(),
+  options: t.Array(t.Object({ optionName: t.String(), priceDelta: t.Integer() })),
+})
+
+const servedRecentItem = t.Object({
+  id: t.String({ format: 'uuid' }),
+  tableName: t.String(),
+  nameSnapshot: t.String(),
+  quantity: t.Integer(),
+  note: t.Union([t.String(), t.Null()]),
+  status: t.Literal('SERVED'),
+  servedAt: t.String(),
   options: t.Array(t.Object({ optionName: t.String(), priceDelta: t.Integer() })),
 })
 
@@ -37,6 +49,17 @@ export const kitchenRoutes = new Elysia({ prefix: '/kitchen' })
     {
       detail: { tags: ['Kitchen'], summary: 'PENDING+COOKING make-queue, oldest first' },
       response: { 200: t.Object({ data: t.Object({ items: t.Array(queueItem) }) }) },
+    },
+  )
+  .get(
+    '/served-recent',
+    async ({ auth }) => {
+      const items = await getServedRecent(db, auth.restaurantId)
+      return { data: { items } }
+    },
+    {
+      detail: { tags: ['Kitchen'], summary: 'SERVED items from the last 30 minutes, newest first' },
+      response: { 200: t.Object({ data: t.Object({ items: t.Array(servedRecentItem) }) }) },
     },
   )
   .patch(
