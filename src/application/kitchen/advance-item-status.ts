@@ -1,4 +1,4 @@
-import { and, eq, exists } from 'drizzle-orm'
+import { and, eq, exists, sql } from 'drizzle-orm'
 
 import type { Database } from '../../infrastructure/database/client'
 import { orderItems, orders } from '../../infrastructure/database/schema'
@@ -32,7 +32,8 @@ export async function advanceItemStatus(
 
   const updated = await database
     .update(orderItems)
-    .set({ status: to })
+    // Stamp serve time only on the →SERVED step; earlier transitions leave served_at null.
+    .set(to === 'SERVED' ? { status: to, servedAt: sql`now()` } : { status: to })
     .where(
       and(
         eq(orderItems.id, orderItemId),
