@@ -40,18 +40,25 @@ A typical flow: product spec → product contract → feature intake → story p
 ## Current State
 
 The spec (`SPEC.md`) has been decomposed into product docs, story packets, and
-an architecture decision. The first buildout — the customer ordering loop plus
-auth — is sliced as epics **E01–E06**. Implemented so far:
+an architecture decision. The first backend buildout is sliced as epics
+**E01-E10** and the durable story matrix is the current control panel.
 
-- **US-001 — Project scaffold + Neon connection + health.** Elysia (Bun) backend
-  in Clean Architecture layout, Drizzle + `node-postgres` connected to Neon, and
-  `GET /api/health`. Verified against a live Neon branch.
+Implemented backend slices include:
+
+- **E01-E05 customer ordering loop:** project scaffold, Neon/Drizzle schema and
+  migrations, QR table resolution, menu browse, order submit, and customer SSE.
+- **E06 staff access:** JWT auth, refresh-token rotation/revocation, RBAC guard,
+  and staff account administration.
+- **E07 kitchen:** queue/status transitions, sold-out toggle, staff restaurant
+  SSE, and recently-served items.
+- **E08-E10 operations:** cashier open tables/bill/discount/payment, admin CRUD
+  for categories/menu items/options/tables/QR tokens, and admin reports.
 - **Shared error catalog** (`src/shared/errors`) — one source of truth for error
   codes, messages, and HTTP statuses, surfaced through the standard envelope.
 
-Remaining first-slice stories (US-002 data model, US-005–US-008 customer loop,
-US-009/US-010 auth & RBAC) are sliced and tracked in the test matrix with proof
-status starting at 0.
+Deferred follow-ups are tracked in `docs/stories/backlog.md` and story validation
+notes, including menu search, dish detail/option-selection UI, customer live
+status UI, call-staff/request-bill, CSV export, and scale-oriented report indexes.
 
 ## Running The App
 
@@ -84,9 +91,8 @@ lint-staged, and `commit-msg` enforces Conventional Commits via commitlint.
 - **Database:** Neon serverless Postgres via Drizzle ORM on the `node-postgres`
   driver (chosen so the realtime broker can hold a persistent `LISTEN/NOTIFY`
   connection).
-- **Auth (planned):** in-house JWT access token + DB-stored revocable refresh
-  token.
-- **Realtime (planned):** SSE from Elysia sourced from Postgres `LISTEN/NOTIFY`.
+- **Auth:** in-house JWT access token + DB-stored revocable refresh token.
+- **Realtime:** SSE from Elysia sourced from Postgres `LISTEN/NOTIFY`.
 
 Rationale and risk gates: `docs/decisions/0008-restaurant-qr-architecture.md`.
 
