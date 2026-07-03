@@ -35,6 +35,10 @@ export function requestLogger(log: Logger = defaultLogger) {
         requestId: string
         startTime: number
       }
+      // `mapResponse` fires once, at the moment the handler returns its response — for a
+      // streaming/SSE route that is stream-OPEN time, not connection-close time. So for
+      // long-lived SSE connections `durationMs` reflects time-to-first-response (typically
+      // ~0ms), NOT how long the connection stayed open. Don't read it as connection lifetime.
       const durationMs = Math.round(performance.now() - startTime)
       const status = typeof set.status === 'number' ? set.status : 200
       const method = request.method
