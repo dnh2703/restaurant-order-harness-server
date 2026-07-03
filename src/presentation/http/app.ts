@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 
 import { errorHandler } from './plugins/error-handler'
 import { openapiPlugin } from './plugins/openapi'
+import { requestLogger } from './plugins/request-logger'
 import { authRoutes } from './routes/auth'
 import { cashierRoutes } from './routes/cashier'
 import { categoriesRoutes } from './routes/categories'
@@ -21,7 +22,8 @@ import { tablesRoutes } from './routes/tables'
  * drive it via `app.handle(...)`; src/index.ts owns the actual listen.
  */
 export const app = new Elysia({ prefix: '/api' })
-  .use(errorHandler)
+  .use(requestLogger())
+  .use(errorHandler())
   .use(openapiPlugin)
   .use(healthRoutes)
   .use(authRoutes)

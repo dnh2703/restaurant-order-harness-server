@@ -59,7 +59,7 @@ export interface SeedData {
 export function buildSeedData(): SeedData {
   return {
     restaurant: {
-      name: 'Quán Cơm Demo',
+      name: 'Bếp Minh Châu',
       address: '123 Lê Lợi, Quận 1, TP.HCM',
       phone: '+84 28 1234 5678',
     },

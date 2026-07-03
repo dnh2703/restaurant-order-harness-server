@@ -1,6 +1,8 @@
 import { Elysia } from 'elysia'
+import type { Logger } from 'pino'
 
 import { env } from '../../../infrastructure/config/env'
+import { logger as defaultLogger } from '../../../infrastructure/logging/logger'
 import { AppError, ERROR_CATALOG, errorEnvelope } from '../../../shared/errors'
 
 /**
@@ -8,10 +10,14 @@ import { AppError, ERROR_CATALOG, errorEnvelope } from '../../../shared/errors'
  *   { "error": { "code", "message", "details"? } }
  * Codes, messages, and statuses come from the shared error catalog
  * (src/shared/errors). See docs/product/api-conventions.md.
+ *
+ * The logger is injectable for tests; production uses the shared pino instance.
  */
-export const errorHandler = new Elysia({ name: 'error-handler' }).onError(
-  { as: 'global' },
-  ({ code, error, set }) => {
+export function errorHandler(log: Logger = defaultLogger) {
+  return new Elysia({ name: 'error-handler' }).onError({ as: 'global' }, (ctx) => {
+    const { code, error, set } = ctx
+    const requestId = (ctx as { requestId?: string }).requestId
+
     // Application/domain errors carry their own code + status.
     if (error instanceof AppError) {
       set.status = error.status
@@ -31,11 +37,13 @@ export const errorHandler = new Elysia({ name: 'error-handler' }).onError(
         return errorEnvelope('MALFORMED_REQUEST')
       default: {
         set.status = ERROR_CATALOG.INTERNAL_ERROR.status
-        if (!env.isProduction) console.error('[unhandled]', error)
-        // Never leak internal error text in production.
+        // Log the real error server-side in EVERY environment (this is the fix —
+        // previously suppressed in production, leaving prod 500s invisible).
+        log.error({ err: error, requestId }, 'unhandled error')
+        // Never leak internal error text in the response body in production.
         const message = !env.isProduction && error instanceof Error ? error.message : undefined
         return errorEnvelope('INTERNAL_ERROR', { message })
       }
     }
-  },
-)
+  })
+}
