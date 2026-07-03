@@ -12,7 +12,14 @@ export function baseOptions(): LoggerOptions {
     level: env.logLevel,
     serializers: { err: stdSerializers.err },
     redact: {
-      paths: ['req.headers.authorization', 'headers.authorization', 'authorization'],
+      paths: [
+        'req.headers.authorization',
+        'headers.authorization',
+        'authorization',
+        'token',
+        '*.token',
+        'req.body.token',
+      ],
       censor: '[REDACTED]',
     },
   }

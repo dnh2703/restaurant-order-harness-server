@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { pino } from 'pino'
 
-import { baseOptions, createLogger } from '../../src/infrastructure/logging/logger'
+import { createLogger } from '../../src/infrastructure/logging/logger'
 
 /**
  * Captures pino's newline-delimited JSON output into parsed objects so we can
@@ -43,15 +42,27 @@ describe('logger core', () => {
   })
 
   it('serializes an `err` field into message + type', () => {
-    const log = pino(
-      { ...baseOptions(), level: 'error' },
-      ((): { write: (s: string) => void } => {
-        return { write: () => {} }
-      })(),
-    )
-    // Smoke: baseOptions must include an err serializer so error logging works.
-    expect(baseOptions().serializers).toBeDefined()
-    expect((baseOptions().serializers as Record<string, unknown>).err).toBeDefined()
+    const { stream, lines } = capture()
+    const log = createLogger({ level: 'error', stream })
+
     log.error({ err: new Error('boom') }, 'unhandled')
+
+    const record = lines[0] as { err: { type: string; message: string; stack: string } }
+    expect(record.err).toBeDefined()
+    expect(record.err.type).toBe('Error')
+    expect(record.err.message).toBe('boom')
+    expect(typeof record.err.stack).toBe('string')
+    expect(record.err.stack).toBeTruthy()
+  })
+
+  it('redacts token fields', () => {
+    const { stream, lines } = capture()
+    const log = createLogger({ level: 'info', stream })
+
+    log.info({ token: 'secret-token-value' }, 'x')
+
+    const record = lines[0] as { token: string }
+    expect(record.token).toBe('[REDACTED]')
+    expect(JSON.stringify(record)).not.toContain('secret-token-value')
   })
 })
