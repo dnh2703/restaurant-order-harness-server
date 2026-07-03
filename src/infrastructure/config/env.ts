@@ -34,10 +34,21 @@ function authJwtSecret(): string {
   return process.env.AUTH_JWT_SECRET?.trim() || 'dev-insecure-jwt-secret-change-me'
 }
 
+/**
+ * Log verbosity for pino. Explicit LOG_LEVEL wins; otherwise default to a chatty
+ * `debug` in development and a quieter `info` in production.
+ */
+function logLevel(): string {
+  const raw = process.env.LOG_LEVEL?.trim()
+  if (raw) return raw
+  return isProduction ? 'info' : 'debug'
+}
+
 export const env = {
   nodeEnv,
   isProduction,
   isTest: nodeEnv === 'test',
+  logLevel: logLevel(),
   port: optionalNumber('PORT', 3000),
   databaseUrl: required('DATABASE_URL'),
   databaseUrlUnpooled: required('DATABASE_URL_UNPOOLED'),
