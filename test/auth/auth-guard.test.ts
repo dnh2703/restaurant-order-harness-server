@@ -12,7 +12,7 @@ import { errorCode } from '../support/http'
  * the verified identity is attached to context.
  */
 const app = new Elysia()
-  .use(errorHandler)
+  .use(errorHandler())
   .use(authGuard)
   .get('/whoami', ({ auth }) => auth, { auth: true })
   .get('/admin-only', ({ auth }) => auth, { auth: ['ADMIN'] })
