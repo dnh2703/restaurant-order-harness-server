@@ -39,4 +39,28 @@ bun run typecheck && bun run lint && bun run format:check
 
 ## Acceptance Evidence
 
-Add results after verification.
+Verified 2026-07-03 (TDD).
+
+- Unit (`test/menu-items/upload-dish-image.test.ts`, fake storage, no DB): 6 pass — rejects
+  missing/empty → `IMAGE_MISSING`; `image/gif` & `application/pdf` → `IMAGE_TYPE_UNSUPPORTED`;
+  `> 5 MB` → `IMAGE_TOO_LARGE`; success stores under `dishes/<restaurantId>/<uuid>.<ext>` with the
+  right content type and returns `publicUrl(key)`; jpeg/png/webp → `jpg`/`png`/`webp`; storage
+  throw → `STORAGE_UNAVAILABLE`. No storage call happens on any rejection.
+- Integration (`test/menu-items/upload-dish-image-route.integration.test.ts`, live Neon for auth,
+  injected fake storage): 5 pass — CASHIER 403, no token 401; ADMIN valid webp → 201 with tenant
+  key + public URL and the fake received the bytes; unsupported type → 400 `IMAGE_TYPE_UNSUPPORTED`;
+  oversize → 400 `IMAGE_TOO_LARGE`; missing field → 400 `IMAGE_MISSING`.
+- Full suite: `bun test` → **244 pass / 0 fail** across 53 files. `typecheck`, `oxlint`,
+  `prettier --check` all clean.
+
+Not covered by automated tests (manual step): the real `Bun.S3Client` → Cloudflare R2 network
+write. `createR2DishImageStorage` is infra wiring (like `database/client.ts`) proven by a manual
+smoke once an R2 bucket + `R2_*` credentials are provisioned:
+
+```text
+# with R2_* set in .env, ADMIN token in $TOKEN:
+curl -sS -X POST http://localhost:3000/api/menu-items/image \
+  -H "authorization: Bearer $TOKEN" -F file=@sample.webp
+# expect: 201 {"data":{"url":"https://<public-base>/dishes/<restaurantId>/<uuid>.webp"}}
+# then open the url and confirm the image loads.
+```
