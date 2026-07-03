@@ -15,10 +15,12 @@ import { logger as defaultLogger } from '../../../infrastructure/logging/logger'
  * (confirmed empirically: it fires only after an intervening `setTimeout(0)`, not
  * after several microtask ticks). That breaks hermetic tests that assert on captured
  * log lines immediately after `await app.handle(...)`. `mapResponse` runs synchronously
- * in the same tick as the rest of the request pipeline — including for thrown errors,
- * where `set.status` has already been finalized to the mapped error status — so it
- * gives the same one-line-per-request semantics without the timing gap. Returning
- * nothing from the hook leaves Elysia's own response untouched.
+ * in the same tick as the rest of the request pipeline for normal responses. For THROWN
+ * errors, the access line is emitted only when an `onError` hook is co-registered on
+ * the same app (which the application does via the global `errorHandler` in `app.ts`);
+ * registered standalone without an error handler, thrown errors bypass `mapResponse`
+ * entirely and are not logged. Returning nothing from the hook leaves Elysia's own
+ * response untouched.
  *
  * The logger is injectable so tests can capture output; production uses the shared one.
  */
