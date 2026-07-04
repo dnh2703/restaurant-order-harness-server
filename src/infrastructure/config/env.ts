@@ -67,14 +67,26 @@ function r2Config(): R2Config | null {
   }
 }
 
+/** The clearly-labelled dev fallback secret. Only ever used under the test runner. */
+export const DEV_JWT_SECRET = 'dev-insecure-jwt-secret-change-me'
+
 /**
- * The JWT signing secret. Required in production (a weak/default secret would let anyone
- * forge access tokens). Outside production we fall back to a clearly-labelled dev secret
- * so `bun test` and local runs work without extra setup.
+ * Resolve the JWT signing secret (US-022). The dev fallback is reachable ONLY when
+ * `nodeEnv === 'test'`, so `bun test` needs no setup. In every other environment
+ * (production, staging, an unset or typo'd NODE_ENV, ...) a real `AUTH_JWT_SECRET` is
+ * required and a missing/blank value throws — the process fails fast at startup rather
+ * than signing forgeable tokens with the public in-repo secret. Pure so it is unit-testable
+ * without mutating `process.env`.
  */
+export function resolveAuthJwtSecret(nodeEnvValue: string, rawSecret: string | undefined): string {
+  const trimmed = rawSecret?.trim()
+  if (nodeEnvValue === 'test') return trimmed || DEV_JWT_SECRET
+  if (!trimmed) throw new Error('Missing required environment variable: AUTH_JWT_SECRET')
+  return trimmed
+}
+
 function authJwtSecret(): string {
-  if (isProduction) return required('AUTH_JWT_SECRET')
-  return process.env.AUTH_JWT_SECRET?.trim() || 'dev-insecure-jwt-secret-change-me'
+  return resolveAuthJwtSecret(nodeEnv, process.env.AUTH_JWT_SECRET)
 }
 
 /**
