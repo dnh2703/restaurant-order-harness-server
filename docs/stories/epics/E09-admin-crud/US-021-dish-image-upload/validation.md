@@ -64,3 +64,14 @@ curl -sS -X POST http://localhost:3000/api/menu-items/image \
 # expect: 201 {"data":{"url":"https://<public-base>/dishes/<restaurantId>/<uuid>.webp"}}
 # then open the url and confirm the image loads.
 ```
+
+Manual R2 smoke — PASSED 2026-07-04 against a live R2 bucket (`bmc-public-media`, public
+`pub-<hash>.r2.dev`): ADMIN upload → `201` with the object URL; fetching that URL returned
+`HTTP 200`, `content-type: image/png`, byte size matching the source. The `STORAGE_UNAVAILABLE`
+path was also exercised live (mis-pasted credential) and logged the R2 error cause as designed.
+
+Ops gotchas found during smoke: (1) an R2 API token screen shows a **Token value** (`cfat_…`,
+~53 chars, NOT for S3), an **Access Key ID** (32 hex → `R2_ACCESS_KEY_ID`), and a **Secret
+Access Key** (64 hex → `R2_SECRET_ACCESS_KEY`); the wrong one yields `Credential access key has
+length 53, should be 32`. (2) `bun --watch` keeps a stale process holding the old `.env`; after
+editing `R2_*`, hard-restart the dev server (env is read once at startup).
