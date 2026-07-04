@@ -29,6 +29,13 @@
       "when": 1782797168167,
       "tag": "0003_wandering_hannibal_king",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783180800000,
+      "tag": "0004_drop_order_item_notify",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@ import { assertTransition, type KitchenStatus, requiredPredecessor } from './ite
  * Tenancy + transition + concurrency are enforced in a single conditional UPDATE: we update the
  * row only when it belongs to `restaurantId` (its order's restaurant) AND currently holds the
  * legal predecessor status. `RETURNING` tells us which case we hit:
- *   - 1 row  → advanced; the status trigger fires NOTIFY for the customer + staff streams.
+ *   - 1 row  → advanced; the customer and staff screens pick up the new status on their next poll.
  *   - 0 rows → either the item is absent / cross-tenant, or its status was not the predecessor.
  *     We disambiguate with one follow-up existence check so the caller gets NOT_FOUND vs
  *     INVALID_TRANSITION. Doing the precondition in SQL (not read-then-write) means two cooks

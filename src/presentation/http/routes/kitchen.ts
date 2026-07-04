@@ -34,8 +34,8 @@ const servedRecentItem = t.Object({
 /**
  * Kitchen screen API (E07 / SPEC EPIC 4). Every route is guarded `['KITCHEN','ADMIN']` and
  * tenant-scoped: the restaurant always comes from the authenticated token (`auth.restaurantId`),
- * never the request body/params. Status writes ride the existing order_items NOTIFY trigger, so
- * the customer (US-008) and staff (US-013) streams update with no extra publish here.
+ * never the request body/params. Status writes are read back by the customer (US-008, GET
+ * /api/qr/:qrToken/order) and staff (US-013, GET /api/kitchen/queue) screens by polling.
  */
 export const kitchenRoutes = new Elysia({ prefix: '/kitchen' })
   .use(authGuard)

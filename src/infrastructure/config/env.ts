@@ -94,7 +94,6 @@ export const env = {
   logLevel: logLevel(),
   port: optionalNumber('PORT', 3000),
   databaseUrl: required('DATABASE_URL'),
-  databaseUrlUnpooled: required('DATABASE_URL_UNPOOLED'),
   // Auth (US-009)
   authJwtSecret: authJwtSecret(),
   // Access token lifetime in seconds (~15 min).

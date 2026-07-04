@@ -18,10 +18,9 @@ function capture(): { log: Logger; lines: Record<string, unknown>[] } {
 }
 
 /**
- * Mirrors the shape of the real SSE routes (src/presentation/http/routes/stream.ts):
- * an `async function*` handler that `yield`s `sse({ event, data })` chunks. No database,
- * no broker — just enough of the pattern to exercise requestLogger's mapResponse hook
- * against a streaming response instead of a plain one.
+ * A streaming (SSE-shaped) handler: an `async function*` that `yield`s `sse({ event, data })`
+ * chunks. Just enough of the pattern to exercise requestLogger's mapResponse hook against a
+ * streaming response instead of a plain one.
  */
 describe('request-logger + streaming (SSE) response', () => {
   it('logs exactly one access line and leaves the streamed body fully intact', async () => {
