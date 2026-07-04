@@ -84,8 +84,17 @@ export const ERROR_CATALOG = {
   // Reports (US-019)
   INVALID_DATE_RANGE: { status: 422, message: 'Date range is invalid' },
 
+  // Dish image upload (US-021)
+  IMAGE_MISSING: { status: 400, message: 'No image file was provided' },
+  IMAGE_TYPE_UNSUPPORTED: {
+    status: 400,
+    message: 'Image must be a JPEG, PNG, or WebP file',
+  },
+  IMAGE_TOO_LARGE: { status: 400, message: 'Image exceeds the maximum allowed size' },
+
   // Infrastructure
   DB_UNAVAILABLE: { status: 503, message: 'Database connectivity check failed' },
+  STORAGE_UNAVAILABLE: { status: 503, message: 'Image storage is currently unavailable' },
 } as const satisfies Record<string, ErrorDefinition>
 
 /** Union of every valid error code, derived from the catalog keys. */

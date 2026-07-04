@@ -4,7 +4,9 @@ import { createMenuItemUseCase } from '../../../application/menu-items/create-me
 import { deleteMenuItemUseCase } from '../../../application/menu-items/delete-menu-item'
 import { listMenuItemsUseCase } from '../../../application/menu-items/list-menu-items'
 import { updateMenuItemUseCase } from '../../../application/menu-items/update-menu-item'
+import { uploadDishImageUseCase } from '../../../application/menu-items/upload-dish-image'
 import { db } from '../../../infrastructure/database/client'
+import { dishImageStorage } from '../../../infrastructure/storage/dish-image-storage'
 import { authGuard } from '../plugins/auth-guard'
 
 const menuItemView = t.Object({
@@ -79,6 +81,23 @@ export const menuItemsRoutes = new Elysia({ prefix: '/menu-items' })
       body: createBody,
       detail: { tags: ['Menu Items'], summary: 'Create a menu item' },
       response: { 201: t.Object({ data: t.Object({ menuItem: menuItemView }) }) },
+    },
+  )
+  .post(
+    '/image',
+    async ({ auth, body, set }) => {
+      const result = await uploadDishImageUseCase(dishImageStorage(), auth.restaurantId, body.file)
+      set.status = 201
+      return { data: { url: result.url } }
+    },
+    {
+      // Permissive file field: the use case owns type/size validation so it can return the
+      // specific IMAGE_* codes (a constrained t.File would pre-empt them with VALIDATION_ERROR).
+      body: t.Object({ file: t.Optional(t.File()) }),
+      detail: { tags: ['Menu Items'], summary: 'Upload a dish image, returns its public URL' },
+      response: {
+        201: t.Object({ data: t.Object({ url: t.String() }) }),
+      },
     },
   )
   .patch(

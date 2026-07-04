@@ -30,6 +30,10 @@ Covers EPIC 2 (customer browsing) and US-6.1–6.3 (admin menu administration).
 
 ### Dishes (US-6.2)
 - CRUD `menu_items`: name, price, image, description, category, `is_available`.
+- Image (US-021): admin uploads a file (`POST /api/menu-items/image`, JPEG/PNG/WebP ≤ 5 MB)
+  which is stored on Cloudflare R2 and returns a public URL to save as `image_url`. Pasting
+  an external URL directly into `image_url` still works. See `api-conventions.md` (File Upload)
+  and decision 0021.
 
 ### Option groups & options (US-6.3)
 - CRUD `option_groups` (type SINGLE/MULTI, `is_required`) and their `options`
@@ -49,6 +53,7 @@ Covers EPIC 2 (customer browsing) and US-6.1–6.3 (admin menu administration).
 | GET | `/api/qr/:qrToken/menu/search?q=&categoryId=` | none | diacritic-insensitive search |
 | GET/POST/PATCH/DELETE | `/api/categories[...]` | ADMIN | category CRUD |
 | GET/POST/PATCH/DELETE | `/api/menu-items[...]` | ADMIN | dish CRUD |
+| POST | `/api/menu-items/image` | ADMIN | upload dish image (multipart) → public URL |
 | POST/PATCH/DELETE | `/api/menu-items/:id/option-groups[...]` | ADMIN | options CRUD |
 
 ## Validation Shape

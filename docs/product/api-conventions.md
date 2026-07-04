@@ -76,6 +76,17 @@ Error envelope is consistent and machine-readable:
 - Order submission appends items to the existing `OPEN` order; it does not create a
   second open order for the same table.
 
+## File Upload
+
+- File uploads use `multipart/form-data` (not JSON), with the binary in a named field.
+- The server validates content type and size and generates the storage object key; the
+  client never supplies the storage path. Uploads are stored on Cloudflare R2 and served
+  from a public URL (decision 0021).
+- Dish image upload: `POST /api/menu-items/image` (ADMIN), field `file`, returns
+  `201 { "data": { "url": "https://.../dishes/<restaurantId>/<uuid>.<ext>" } }`. Accepts
+  JPEG/PNG/WebP up to 5 MB. Errors: `IMAGE_MISSING`, `IMAGE_TYPE_UNSUPPORTED`,
+  `IMAGE_TOO_LARGE` (all `400`), `STORAGE_UNAVAILABLE` (`503`).
+
 ## Pagination
 
 - List endpoints that can grow (orders, reports) accept `?limit=&cursor=`; default
