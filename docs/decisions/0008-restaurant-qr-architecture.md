@@ -28,6 +28,8 @@ leaves the ORM and build order open, and bundles every epic into one document.
      `qr_token`.
    - Realtime: SSE from Elysia backed by a single backend-held Postgres `LISTEN`
      connection (`RealtimeBroker`); clients never `LISTEN` directly; polling fallback.
+     **Superseded by decision 0022 (2026-07-04): SSE and the broker were removed;
+     realtime is now polling-only.**
 2. **Decompose into product docs** under `docs/product/` (one per domain) as the living
    contract; treat `SPEC.md` as a historical seed (per decision 0002/0003).
 3. **First slice = the customer ordering loop** (E01 foundation → E02 QR session → E03

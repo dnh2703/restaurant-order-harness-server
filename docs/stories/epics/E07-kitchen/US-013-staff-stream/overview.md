@@ -1,5 +1,9 @@
 # Overview — US-013 Staff Restaurant-Wide SSE Stream
 
+> **Retired 2026-07-04 (decision 0022).** SSE and the `RealtimeBroker` were removed; staff
+> screens now poll `GET /api/kitchen/queue` (and `/served-recent`) every 2–3s. The sections
+> below describe the original SSE design and are kept for history.
+
 ## Current Behavior
 
 US-008 established the `RealtimeBroker`: a single backend `LISTEN` connection fanning `NOTIFY`

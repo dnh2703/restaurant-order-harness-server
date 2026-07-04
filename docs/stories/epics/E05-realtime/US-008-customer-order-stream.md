@@ -2,7 +2,11 @@
 
 ## Status
 
-done
+retired
+
+> **Retired 2026-07-04 (decision 0022).** SSE and the `RealtimeBroker` were removed;
+> the customer now polls `GET /api/qr/:qrToken/order` every 2–3s. The acceptance criteria
+> and design notes below describe the original SSE implementation and are kept for history.
 
 ## Lane
 
