@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 
 import { errorHandler } from './plugins/error-handler'
 import { openapiPlugin } from './plugins/openapi'
+import { rateLimiting } from './plugins/rate-limit-instance'
 import { requestLogger } from './plugins/request-logger'
 import { authRoutes } from './routes/auth'
 import { cashierRoutes } from './routes/cashier'
@@ -24,6 +25,7 @@ export const app = new Elysia({ prefix: '/api' })
   .use(requestLogger())
   .use(errorHandler())
   .use(openapiPlugin)
+  .use(rateLimiting.globalPlugin)
   .use(healthRoutes)
   .use(authRoutes)
   .use(cashierRoutes)

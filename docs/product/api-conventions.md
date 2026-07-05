@@ -28,7 +28,13 @@ rules instead of restating them.
 
 Errors: `400` validation, `401` unauthenticated, `403` forbidden (wrong role),
 `404` not found, `409` conflict (e.g. invalid state transition), `422` semantic
-validation, `500` server.
+validation, `429` rate-limited, `500` server.
+
+Rate limiting (US-023): `POST /api/auth/login` is throttled per-IP and per-account, and
+QR/upload routes have a global per-IP limit. Exceeding a limit returns
+`429 TOO_MANY_REQUESTS` with a `Retry-After` header (seconds). The 429 is identical whether
+or not the account exists, so it never reveals account existence. Clients should back off
+for `Retry-After` seconds.
 
 ## Response Envelope
 

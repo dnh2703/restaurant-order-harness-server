@@ -21,6 +21,12 @@ export function errorHandler(log: Logger = defaultLogger) {
     // Application/domain errors carry their own code + status.
     if (error instanceof AppError) {
       set.status = error.status
+      // Surface Retry-After for throttled requests (US-023); the value rides in details.
+      if (error.code === 'TOO_MANY_REQUESTS') {
+        const retryAfter = (error.details as { retryAfterSeconds?: number } | undefined)
+          ?.retryAfterSeconds
+        if (typeof retryAfter === 'number') set.headers['retry-after'] = String(retryAfter)
+      }
       return errorEnvelope(error.code, { message: error.message, details: error.details })
     }
 

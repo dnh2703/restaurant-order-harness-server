@@ -6,6 +6,7 @@ import { meUseCase } from '../../../application/auth/me'
 import { refreshUseCase } from '../../../application/auth/refresh'
 import { db } from '../../../infrastructure/database/client'
 import { authGuard } from '../plugins/auth-guard'
+import { rateLimiting } from '../plugins/rate-limit-instance'
 
 const userView = t.Object({
   id: t.String({ format: 'uuid' }),
@@ -40,6 +41,10 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
     },
     {
       body: loginBody,
+      // Throttle per-IP and per-account before the use-case runs (US-023). Runs after body
+      // validation, so only well-formed attempts are counted; a breach returns 429 without
+      // reaching the DB, so the response is identical whether or not the account exists.
+      beforeHandle: rateLimiting.loginGuard,
       detail: { tags: ['Auth'], summary: 'Staff login (email + password)' },
       response: {
         200: t.Object({
