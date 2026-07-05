@@ -101,6 +101,10 @@ export const env = {
   isTest: nodeEnv === 'test',
   logLevel: logLevel(),
   port: optionalNumber('PORT', 3000),
+  // Max request body the server accepts before rejecting (US-024). Bounds memory: oversized
+  // bodies are refused by Bun.serve before the handler buffers them. Default 6 MB comfortably
+  // covers the 5 MB dish image plus multipart overhead.
+  maxRequestBodyBytes: optionalNumber('MAX_REQUEST_BODY_BYTES', 6_000_000),
   databaseUrl: required('DATABASE_URL'),
   // Auth (US-009)
   authJwtSecret: authJwtSecret(),

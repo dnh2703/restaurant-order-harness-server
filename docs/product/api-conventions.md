@@ -58,6 +58,16 @@ Error envelope is consistent and machine-readable:
 
 `code` is a stable SCREAMING_SNAKE string; clients branch on `code`, not `message`.
 
+## Transport hardening (US-024)
+
+- Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Content-Security-Policy: frame-ancestors 'none'`, and `Referrer-Policy: no-referrer`;
+  `Strict-Transport-Security` is added in production.
+- Request bodies over `MAX_REQUEST_BODY_BYTES` (default 6 MB) are rejected with `413` before
+  a handler runs.
+- The OpenAPI docs (`/api/docs`, `/api/docs/json`) are served only outside production; in
+  production they return `404`.
+
 ## Money
 
 - All monetary fields are integers in VND, named `price`, `unit_price`, `subtotal`,
