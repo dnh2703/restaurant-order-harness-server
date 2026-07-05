@@ -29,7 +29,7 @@ function makeApp(max: number) {
   return { app, handlerCalls: () => handlerCalls }
 }
 
-function login(app: Elysia, email: string, ip: string) {
+function login(app: ReturnType<typeof makeApp>['app'], email: string, ip: string) {
   return app.handle(
     new Request('http://localhost/login', {
       method: 'POST',

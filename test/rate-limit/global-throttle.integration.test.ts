@@ -23,7 +23,7 @@ function makeApp(max: number) {
     .get('/health', () => ({ data: 'ok' }))
 }
 
-function get(app: Elysia, path: string, ip: string) {
+function get(app: ReturnType<typeof makeApp>, path: string, ip: string) {
   return app.handle(new Request(`http://localhost${path}`, { headers: { 'x-forwarded-for': ip } }))
 }
 
