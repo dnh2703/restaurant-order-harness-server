@@ -66,7 +66,9 @@ context, and enforces role per route group:
 - Wrong role → `403 FORBIDDEN`. Missing/invalid token → `401`.
 - Tenant scope: every staff query is filtered by `restaurantId` from the token; a
   user may never read or mutate another restaurant's data.
-- Customer (QR) routes skip the guard entirely and are authorized by `qr_token`.
+- Customer (QR) routes skip the guard entirely and are authorized by `qr_token`. Because
+  the token is the customer's sole capability, the access log masks it to `:qrToken` so it
+  never leaks via logs (US-025 / decision 0024).
 
 ## Staff Account Management (US-8.4)
 

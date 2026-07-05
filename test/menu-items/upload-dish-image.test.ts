@@ -28,8 +28,19 @@ function fakeStorage(overrides: { failPut?: boolean } = {}): DishImageStorage & 
   }
 }
 
+/** Magic-byte signatures so fixtures pass the US-025 byte check for their declared type. */
+const SIGNATURES: Record<string, readonly number[]> = {
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'image/webp': [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50],
+}
+
 function imageFile(type: string, size = 16): File {
-  return new File([new Uint8Array(size)], 'photo', { type })
+  const buf = new Uint8Array(size)
+  const sig = SIGNATURES[type]
+  // Only stamp the signature when there's room; size 0 must stay empty (IMAGE_MISSING case).
+  if (sig && size >= sig.length) buf.set(sig, 0)
+  return new File([buf], 'photo', { type })
 }
 
 describe('uploadDishImageUseCase', () => {
@@ -64,6 +75,17 @@ describe('uploadDishImageUseCase', () => {
         imageFile('image/png', MAX_DISH_IMAGE_BYTES + 1),
       ),
     ).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' })
+    expect(storage.puts).toHaveLength(0)
+  })
+
+  it('rejects a file whose bytes do not match the declared image type (US-025)', async () => {
+    const storage = fakeStorage()
+    // Declared image/png but the bytes are HTML — must be rejected before any storage call.
+    const html = new Uint8Array([...'<html></html>'].map((c) => c.charCodeAt(0)))
+    const file = new File([html], 'evil', { type: 'image/png' })
+    await expect(uploadDishImageUseCase(storage, RESTAURANT_ID, file)).rejects.toMatchObject({
+      code: 'IMAGE_TYPE_UNSUPPORTED',
+    })
     expect(storage.puts).toHaveLength(0)
   })
 
