@@ -22,6 +22,7 @@ export const ERROR_CATALOG = {
   VALIDATION_ERROR: { status: 400, message: 'Request validation failed' },
   MALFORMED_REQUEST: { status: 400, message: 'Could not parse request body' },
   NOT_FOUND: { status: 404, message: 'Resource not found' },
+  TOO_MANY_REQUESTS: { status: 429, message: 'Too many requests, please try again later' },
   INTERNAL_ERROR: { status: 500, message: 'Internal server error' },
 
   // Auth & RBAC (US-009)

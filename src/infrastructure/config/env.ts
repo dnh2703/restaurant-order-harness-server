@@ -21,6 +21,14 @@ function optionalNumber(name: string, fallback: number): number {
   return parsed
 }
 
+function optionalBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]?.trim().toLowerCase()
+  if (raw === undefined || raw === '') return fallback
+  if (raw === 'true' || raw === '1') return true
+  if (raw === 'false' || raw === '0') return false
+  throw new Error(`Environment variable ${name} must be a boolean (true/false), got: ${raw}`)
+}
+
 const nodeEnv = process.env.NODE_ENV ?? 'development'
 const isProduction = nodeEnv === 'production'
 
@@ -100,6 +108,23 @@ export const env = {
   authAccessTokenTtl: optionalNumber('AUTH_ACCESS_TOKEN_TTL', 900),
   // Refresh token lifetime in days.
   authRefreshTokenTtlDays: optionalNumber('AUTH_REFRESH_TOKEN_TTL_DAYS', 30),
+  // Rate limiting (US-023 / decision 0023). Disabled by default under the test runner so
+  // suites that drive many requests through one (socketless) key are not throttled; on
+  // everywhere else. `trustedProxyHeader` must name the header the deploy's proxy sets
+  // (e.g. 'x-forwarded-for'); left unset, the socket IP is used and forwarded headers are
+  // ignored (never trust a client-spoofable header by default).
+  rateLimit: {
+    enabled: optionalBool('RATE_LIMIT_ENABLED', nodeEnv !== 'test'),
+    trustedProxyHeader: process.env.RATE_LIMIT_TRUSTED_PROXY_HEADER?.trim() || undefined,
+    login: {
+      windowMs: optionalNumber('AUTH_LOGIN_RATE_WINDOW_SEC', 60) * 1000,
+      max: optionalNumber('AUTH_LOGIN_RATE_MAX', 10),
+    },
+    global: {
+      windowMs: optionalNumber('GLOBAL_RATE_WINDOW_SEC', 60) * 1000,
+      max: optionalNumber('GLOBAL_RATE_MAX', 120),
+    },
+  },
   // Storage / R2 (US-021)
   r2: r2Config(),
 } as const

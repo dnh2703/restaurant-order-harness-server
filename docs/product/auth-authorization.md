@@ -34,6 +34,9 @@ authorization are hard gates; behavior changes require a decision record.
 - Verify email is active (`is_active = true`) and password matches the hash.
 - On success return access token + refresh token; record the refresh token row.
 - Invalid credentials → `401 INVALID_CREDENTIALS` (do not reveal which field failed).
+- Rate-limited per-IP and per-account (US-023 / decision 0023): too many attempts →
+  `429 TOO_MANY_REQUESTS` with `Retry-After`, thrown before the use-case runs so it never
+  reveals whether the account exists. QR/upload routes have a global per-IP limit.
 
 ### Refresh (US-8.2)
 
