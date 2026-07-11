@@ -75,6 +75,27 @@ function r2Config(): R2Config | null {
   }
 }
 
+const ENCRYPTED_SSLMODES = new Set(['require', 'verify-ca', 'verify-full'])
+
+/**
+ * Validate that DATABASE_URL requests an encrypted connection (US-027). Outside
+ * `nodeEnv === 'test'`, a `DATABASE_URL` whose `sslmode` is missing, `disable`, or `allow`
+ * fails fast at startup instead of letting the pool silently connect over plaintext. Pure so
+ * it is unit-testable without mutating `process.env`; CI's dummy `DATABASE_URL` (no sslmode,
+ * never actually connected to) is exempted the same way the test runner exempts
+ * `AUTH_JWT_SECRET`.
+ */
+export function resolveDatabaseUrl(nodeEnvValue: string, rawUrl: string): string {
+  if (nodeEnvValue === 'test') return rawUrl
+  const sslmode = new URL(rawUrl).searchParams.get('sslmode')
+  if (!sslmode || !ENCRYPTED_SSLMODES.has(sslmode)) {
+    throw new Error(
+      'DATABASE_URL must request an encrypted connection outside tests: set sslmode=require, verify-ca, or verify-full',
+    )
+  }
+  return rawUrl
+}
+
 /** The clearly-labelled dev fallback secret. Only ever used under the test runner. */
 export const DEV_JWT_SECRET = 'dev-insecure-jwt-secret-change-me'
 
@@ -117,7 +138,7 @@ export const env = {
   // bodies are refused by Bun.serve before the handler buffers them. Default 6 MB comfortably
   // covers the 5 MB dish image plus multipart overhead.
   maxRequestBodyBytes: optionalNumber('MAX_REQUEST_BODY_BYTES', 6_000_000),
-  databaseUrl: required('DATABASE_URL'),
+  databaseUrl: resolveDatabaseUrl(nodeEnv, required('DATABASE_URL')),
   // Auth (US-009)
   authJwtSecret: authJwtSecret(),
   // Access token lifetime in seconds (~15 min).
