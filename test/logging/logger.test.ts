@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createLogger } from '../../src/infrastructure/logging/logger'
+import { createLogger, safeErrSerializer } from '../../src/infrastructure/logging/logger'
 
 /**
  * Captures pino's newline-delimited JSON output into parsed objects so we can
@@ -55,6 +55,24 @@ describe('logger core', () => {
     expect(record.err.stack).toBeTruthy()
   })
 
+  it('strips extra error properties that could carry sensitive data (US-030)', () => {
+    const { stream, lines } = capture()
+    const log = createLogger({ level: 'error', stream })
+
+    // Simulates a `pg` constraint-violation error, whose `detail` often echoes back the
+    // offending user-submitted value.
+    const dbError = Object.assign(new Error('duplicate key value violates unique constraint'), {
+      detail: 'Key (email)=(user@example.com) already exists.',
+      table: 'users',
+      column: 'email',
+    })
+    log.error({ err: dbError }, 'unhandled error')
+
+    const record = lines[0] as { err: Record<string, unknown> }
+    expect(Object.keys(record.err).toSorted()).toEqual(['message', 'stack', 'type'])
+    expect(JSON.stringify(record)).not.toContain('user@example.com')
+  })
+
   it('redacts token fields', () => {
     const { stream, lines } = capture()
     const log = createLogger({ level: 'info', stream })
@@ -64,5 +82,10 @@ describe('logger core', () => {
     const record = lines[0] as { token: string }
     expect(record.token).toBe('[REDACTED]')
     expect(JSON.stringify(record)).not.toContain('secret-token-value')
+  })
+
+  it('safeErrSerializer passes non-Error values through unchanged', () => {
+    expect(safeErrSerializer('not-an-error')).toBe('not-an-error')
+    expect(safeErrSerializer(undefined)).toBeUndefined()
   })
 })

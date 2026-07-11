@@ -1,7 +1,19 @@
-import { pino, stdSerializers, type DestinationStream, type Logger, type LoggerOptions } from 'pino'
+import { pino, type DestinationStream, type Logger, type LoggerOptions } from 'pino'
 import pretty from 'pino-pretty'
 
 import { env } from '../config/env'
+
+/**
+ * US-030: a fixed-field error serializer, in place of pino's `stdSerializers.err`. The
+ * standard serializer spreads every enumerable property of an Error, and driver errors (e.g.
+ * pg constraint violations) carry `detail`/`hint`/`table`/`column`/query context — `detail`
+ * in particular often echoes back the offending user-submitted value. Limiting to
+ * name/message/stack keeps every `log.error({ err }, ...)` call site safe by default.
+ */
+export function safeErrSerializer(error: unknown): unknown {
+  if (!(error instanceof Error)) return error
+  return { type: error.name, message: error.message, stack: error.stack }
+}
 
 /**
  * Shared pino configuration. Redaction is belt-and-suspenders: the request logger
@@ -10,7 +22,7 @@ import { env } from '../config/env'
 export function baseOptions(): LoggerOptions {
   return {
     level: env.logLevel,
-    serializers: { err: stdSerializers.err },
+    serializers: { err: safeErrSerializer },
     redact: {
       paths: [
         'req.headers.authorization',
