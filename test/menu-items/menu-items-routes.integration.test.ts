@@ -197,6 +197,63 @@ describe('menu-items CRUD', () => {
   )
 
   it(
+    'rejects a non-URL imageUrl with 400, accepts an http(s) URL and null',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminAEmail)
+
+      const bad = await req('/menu-items', {
+        method: 'POST',
+        token,
+        body: { categoryId: categoryAId, name: 'Bad Image', price: 1000, imageUrl: 'not-a-url' },
+      })
+      expect(bad.status).toBe(400)
+
+      const badScheme = await req('/menu-items', {
+        method: 'POST',
+        token,
+        body: {
+          categoryId: categoryAId,
+          name: 'Bad Scheme',
+          price: 1000,
+          imageUrl: 'javascript:alert(1)',
+        },
+      })
+      expect(badScheme.status).toBe(400)
+
+      const good = await req('/menu-items', {
+        method: 'POST',
+        token,
+        body: {
+          categoryId: categoryAId,
+          name: 'Good Image',
+          price: 1000,
+          imageUrl: 'https://img.example.com/pho.png',
+        },
+      })
+      expect(good.status).toBe(201)
+      const { data: g } = (await good.json()) as { data: { menuItem: { id: string } } }
+
+      const patched = await req(`/menu-items/${g.menuItem.id}`, {
+        method: 'PATCH',
+        token,
+        body: { imageUrl: null },
+      })
+      expect(patched.status).toBe(200)
+
+      const patchedBad = await req(`/menu-items/${g.menuItem.id}`, {
+        method: 'PATCH',
+        token,
+        body: { imageUrl: 'not-a-url' },
+      })
+      expect(patchedBad.status).toBe(400)
+
+      await db.delete(menuItems).where(eq(menuItems.id, g.menuItem.id))
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
     'cannot create into another restaurant category — 404 CATEGORY_NOT_FOUND',
     async () => {
       if (!schemaAvailable) return

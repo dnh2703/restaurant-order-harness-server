@@ -22,12 +22,18 @@ const menuItemView = t.Object({
 
 const listQuery = t.Object({ categoryId: t.Optional(t.String({ format: 'uuid' })) })
 
+// US-026: an absolute http(s) URL, or null/absent. `format: 'uri'` alone accepts any URI
+// scheme (including `javascript:`), so the pattern additionally pins it to http(s).
+const imageUrlBody = t.Optional(
+  t.Union([t.String({ format: 'uri', pattern: '^https?://' }), t.Null()]),
+)
+
 const createBody = t.Object({
   categoryId: t.String({ format: 'uuid' }),
   name: t.String({ minLength: 1 }),
   price: t.Integer({ minimum: 0 }),
   description: t.Optional(t.Union([t.String(), t.Null()])),
-  imageUrl: t.Optional(t.Union([t.String(), t.Null()])),
+  imageUrl: imageUrlBody,
   isAvailable: t.Optional(t.Boolean()),
   sortOrder: t.Optional(t.Integer()),
 })
@@ -38,7 +44,7 @@ const updateBody = t.Object(
     name: t.Optional(t.String({ minLength: 1 })),
     price: t.Optional(t.Integer({ minimum: 0 })),
     description: t.Optional(t.Union([t.String(), t.Null()])),
-    imageUrl: t.Optional(t.Union([t.String(), t.Null()])),
+    imageUrl: imageUrlBody,
     isAvailable: t.Optional(t.Boolean()),
     sortOrder: t.Optional(t.Integer()),
   },
