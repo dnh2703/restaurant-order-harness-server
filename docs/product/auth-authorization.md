@@ -17,6 +17,11 @@ authorization are hard gates; behavior changes require a decision record.
 | Refresh | ~7–30 days | DB `refresh_tokens`, hashed, revocable | opaque |
 
 - Access tokens are signed with `@elysiajs/jwt`. Verified on every staff request.
+- The signing secret (`AUTH_JWT_SECRET`) is **required in every environment except tests**.
+  The known dev fallback is used only when `NODE_ENV=test`; any other environment
+  (production, staging, unset/typo'd `NODE_ENV`) fails fast at startup if the secret is
+  missing, so a misconfigured deploy can never sign forgeable tokens with the public in-repo
+  secret (US-022 / decision 0023).
 - Refresh tokens are stored as `token_hash` so a DB leak does not expose usable
   tokens.
 
