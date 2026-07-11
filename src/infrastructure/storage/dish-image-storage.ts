@@ -34,7 +34,8 @@ export function createR2DishImageStorage(config: NonNullable<typeof env.r2>): Di
   return {
     async put(key, bytes, contentType) {
       try {
-        await client.write(key, bytes, { type: contentType })
+        // US-029: pin inline rendering explicitly rather than relying on R2/CDN defaults.
+        await client.write(key, bytes, { type: contentType, contentDisposition: 'inline' })
       } catch (error) {
         logger.error({ err: error, key }, 'R2 dish image upload failed')
         throw error
