@@ -6,6 +6,16 @@ import type { Logger } from 'pino'
 import { logger as defaultLogger } from '../../../infrastructure/logging/logger'
 
 /**
+ * Mask the `qrToken` segment of QR routes before logging (US-025 / decision 0024). The token
+ * is the customer's only authorization for a table's orders, so it must never reach the
+ * access logs. `/api/qr/<token>[/...]` → `/api/qr/:qrToken[/...]`; all other paths are
+ * returned unchanged.
+ */
+export function maskSensitivePath(path: string): string {
+  return path.replace(/^(\/api\/qr\/)[^/]+/, '$1:qrToken')
+}
+
+/**
  * Access logging via Elysia's own lifecycle hooks (no third-party plugin).
  * `derive` (global) tags every request with an id + start time so handlers and the
  * error handler can correlate; `mapResponse` emits exactly one line per request.
@@ -42,10 +52,16 @@ export function requestLogger(log: Logger = defaultLogger) {
       const durationMs = Math.round(performance.now() - startTime)
       const status = typeof set.status === 'number' ? set.status : 200
       const method = request.method
+      // Mask the qrToken so it never lands in the access log (US-025). Route classification
+      // (below) still uses the real path.
+      const loggedPath = maskSensitivePath(path)
 
       const level =
         status >= 500 ? 'error' : status >= 400 ? 'warn' : path === '/api/health' ? 'debug' : 'info'
 
-      log[level]({ requestId, method, path, status, durationMs }, `${method} ${path} ${status}`)
+      log[level](
+        { requestId, method, path: loggedPath, status, durationMs },
+        `${method} ${loggedPath} ${status}`,
+      )
     })
 }

@@ -71,6 +71,14 @@ async function tokenFor(email: string): Promise<string> {
   return data.accessToken
 }
 
+// RIFF....WEBP magic so fixtures pass the US-025 byte check for image/webp.
+const WEBP_MAGIC = [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]
+function webpFile(name = 'p.webp', total = 32): File {
+  const buf = new Uint8Array(Math.max(total, WEBP_MAGIC.length))
+  buf.set(WEBP_MAGIC, 0)
+  return new File([buf], name, { type: 'image/webp' })
+}
+
 function uploadReq(
   init: { token?: string; file?: File; omitFile?: boolean } = {},
 ): Promise<Response> {
@@ -78,7 +86,7 @@ function uploadReq(
   // filename, matching how real uploads arrive (browsers send a filename + Content-Type per part).
   const form = new FormData()
   if (!init.omitFile) {
-    form.set('file', init.file ?? new File([new Uint8Array(16)], 'p.webp', { type: 'image/webp' }))
+    form.set('file', init.file ?? webpFile())
   }
   const headers: Record<string, string> = {}
   if (init.token) headers.authorization = `Bearer ${init.token}`
@@ -107,7 +115,7 @@ describe('POST /menu-items/image', () => {
       const token = await tokenFor(adminEmail)
       const res = await uploadReq({
         token,
-        file: new File([new Uint8Array(32)], 'dish.webp', { type: 'image/webp' }),
+        file: webpFile('dish.webp', 32),
       })
       expect(res.status).toBe(201)
       const { data } = (await res.json()) as { data: { url: string } }
@@ -127,6 +135,22 @@ describe('POST /menu-items/image', () => {
       const res = await uploadReq({
         token,
         file: new File([new Uint8Array(16)], 'x.gif', { type: 'image/gif' }),
+      })
+      expect(res.status).toBe(400)
+      expect(await errorCode(res)).toBe('IMAGE_TYPE_UNSUPPORTED')
+    },
+    DB_TIMEOUT_MS,
+  )
+
+  it(
+    'rejects a file whose bytes do not match the declared image type (US-025)',
+    async () => {
+      if (!schemaAvailable) return
+      const token = await tokenFor(adminEmail)
+      const html = new Uint8Array([...'<html></html>'].map((c) => c.charCodeAt(0)))
+      const res = await uploadReq({
+        token,
+        file: new File([html], 'evil.png', { type: 'image/png' }),
       })
       expect(res.status).toBe(400)
       expect(await errorCode(res)).toBe('IMAGE_TYPE_UNSUPPORTED')

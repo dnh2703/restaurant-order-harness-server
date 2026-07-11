@@ -5,7 +5,9 @@ Covers EPIC 1 (QR access & table session) and US-6.4 (table administration).
 ## Table Administration (US-6.4, Admin)
 
 - `ADMIN` can CRUD tables: `name`/number, `capacity`, and the QR `qr_token`.
-- Each table has a unique `qr_token`.
+- Each table has a unique `qr_token`. It is the customer's sole authorization for the
+  table's orders, so it is treated as a secret: the access log masks it to `:qrToken`
+  (US-025 / decision 0024) and it is never written to logs.
 - **Regenerate token** (US-1.3): issuing a new `qr_token` immediately invalidates the
   old QR. Any in-flight session keyed on the old token can no longer resolve.
 - **Export QR** (US-1.3): produce a printable QR (PNG/PDF) encoding the table's QR URL
