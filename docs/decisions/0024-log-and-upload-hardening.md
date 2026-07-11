@@ -61,4 +61,8 @@ Tradeoffs:
 - Implement US-025.
 - Bucket/CDN `X-Content-Type-Options: nosniff` + `Content-Disposition` remain out-of-repo
   config, noted in the audit but not owned by this decision.
-- The `imageUrl`-accepts-any-string LOW finding is not covered here.
+  **Correction (decision 0025):** `Content-Disposition` turned out to be code-owned (Bun's
+  `S3Client.write()` accepts it); only `nosniff` genuinely requires CDN/edge config. See
+  US-029.
+- The `imageUrl`-accepts-any-string LOW finding is not covered here. See US-026 (decision
+  0025 follow-up).
